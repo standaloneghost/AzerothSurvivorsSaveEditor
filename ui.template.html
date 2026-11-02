@@ -57,6 +57,9 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 .col-r{flex:1 1 330px;min-width:0}
 .bar{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;min-height:72px;margin-bottom:14px}
 .bar .sub{margin:0}
+.lvlrow{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.lvlf{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.lvlf input{width:84px}
 .bar .inline{margin-left:auto;justify-content:flex-end}
 .col-r .bar input{width:150px}
 .zones{overflow-x:auto}
@@ -151,7 +154,7 @@ async function api(path, body) {
 
 /* ---------- reading the save ---------- */
 function parse(text) {
-  const m = { stat: [], marks: {}, beat: {}, heroic: {}, ach: [], achat: {}, perks: {}, pets: [], races: [], items: new Set(), stars: {}, worn: new Set() };
+  const m = { stat: [], marks: {}, beat: {}, heroic: {}, ach: [], achat: {}, perks: {}, pets: [], races: [], items: new Set(), stars: {}, worn: new Set(), talent: {} };
   for (const line of text.split('\n')) {
     const p = line.split('|'), k = p[0];
     if (k === 'stat') m.stat = (p[1] || '').split(',').filter(Boolean).map((x) => x.split('='));
@@ -166,6 +169,7 @@ function parse(text) {
     else if (k === 'items') (p[1] || '').split(',').filter(Boolean).forEach((x) => m.items.add(x));
     else if (k === 'stars') (p[1] || '').split(',').filter(Boolean).forEach((x) => { const [a, b] = x.split(':'); m.stars[a] = Number(b) || 0; });
     else if (k === 'equip') (p[2] || '').split(',').filter(Boolean).forEach((x) => m.worn.add(x.split(':')[1]));
+    else if (k === 'talent') m.talent[p[1]] = p[2] || '0';
   }
   return m;
 }
@@ -202,6 +206,20 @@ function toggleAch(L, m, id, on) {
 function setPerks(L, p) { put(L, 'perk', any, `perk|${Object.keys(p).filter((k) => p[k] > 0).sort().map((k) => `${k}:${p[k]}`).join(',')}`); }
 function itemId(c, si, r) { return `1${c.padStart(2, '0')}${si}${r}0`; }
 
+/* A class's level comes from its talent experience: level N costs 80 + 15 * (N - 1). */
+const MAX_LEVEL = 200;
+function levelOf(exp) {
+  let left = Number(exp) || 0, cost = 80, level = 0;
+  while (level < MAX_LEVEL && left >= cost) { left -= cost; cost += 15; level++; }
+  return level;
+}
+const expFor = (level) => 80 * level + 15 * level * (level - 1) / 2;
+function setExp(L, c, exp) {
+  const line = L.find((l) => l.startsWith(`talent|${c}|`));
+  if (line) { const p = line.split('|'); p[2] = String(exp); put(L, 'talent', ofClass(c), p.join('|')); }
+  else if (exp > 0) put(L, 'talent', ofClass(c), `talent|${c}|${exp}|`);
+}
+
 function edit(fn) {
   const L = S.text.split('\n'), m = parse(S.text);
   fn(L, m);
@@ -215,6 +233,7 @@ function diff(a, b) {
   const x = parse(a), y = parse(b), out = [];
   const set = new Set();
   CLASSES.forEach(([id, name]) => {
+    if (levelOf(x.talent[id]) !== levelOf(y.talent[id])) out.push(`${name} level: ${levelOf(x.talent[id])} → ${levelOf(y.talent[id])}`);
     if ((x.marks[id] || 0) !== (y.marks[id] || 0)) out.push(`${name} marks: ${marksText(x.marks[id] || 0)} → ${marksText(y.marks[id] || 0)}`);
     ZONES.forEach(([k, zn]) => {
       const h0 = (x.heroic[id] || {})[k] || 0, h1 = (y.heroic[id] || {})[k] || 0;
@@ -236,7 +255,7 @@ function diff(a, b) {
   });
   const stat0 = Object.fromEntries(x.stat), stat1 = Object.fromEntries(y.stat);
   STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(k === 'marks' ? `${l}: ${marksText(stat0[k])} → ${marksText(stat1[k])}` : `${l}: ${stat0[k]} → ${stat1[k]}`); });
-  const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat']);
+  const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat', 'talent']);
   const rest = (t) => t.split('\n').filter((l) => !known.has(l.split('|')[0]));
   const r0 = rest(a), r1 = rest(b), seen = new Map();
   r0.forEach((l) => seen.set(l, (seen.get(l) || 0) + 1));
@@ -254,7 +273,7 @@ function viewZones(m, name) {
     <td><label class="chk"><input type="checkbox" data-c="beat" data-z="${k}" aria-label="${esc(zn)} cleared" ${beat.includes(k) ? 'checked' : ''}></label></td>
     <td><div class="seg" role="group" aria-label="Highest Heroic tier cleared in ${esc(zn)}">${ROMAN.map((lab, i) => `<button data-a="tier" data-z="${k}" data-v="${i}" class="${(h[k] || 0) === i ? 'sel' : ''}" aria-pressed="${(h[k] || 0) === i}" aria-label="${i ? `Heroic ${lab}` : 'No Heroic clear'} in ${esc(zn)}">${lab}</button>`).join('')}</div></td></tr>`).join('');
   const locked = lockedPieces(m, c).length;
-  return `<div class="split"><div class="col-l"><div class="bar"><div><h2>${esc(name)}</h2><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
+  return `<div class="split"><div class="col-l"><div class="bar"><div><div class="lvlrow"><h2>${esc(name)}</h2><label class="lvlf">Level<input type="number" min="0" max="${MAX_LEVEL}" data-c="level" value="${levelOf(m.talent[c])}"></label></div><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
       <div class="inline"><button class="btn" data-a="allz">Mark all zones cleared</button><button class="btn" data-a="allh5">Clear+H5</button></div></div>
       <div class="box zones"><table><thead><tr><th scope="col">Zone</th><th scope="col">Cleared</th><th scope="col">Highest Heroic cleared</th></tr></thead><tbody>${rows}</tbody></table></div></div>
     <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" step="0.1" data-c="marks" value="${marksOut(m.marks[c] || 0)}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
@@ -433,6 +452,7 @@ document.addEventListener('change', (e) => {
   if (!c) return;
   const num = () => Math.max(0, parseInt(t.value, 10) || 0);
   if (c === 'marks') edit((L) => setMarks(L, S.cls, marksIn(t.value)));
+  else if (c === 'level') edit((L, m) => { const lv = Math.min(MAX_LEVEL, num()); if (lv !== levelOf(m.talent[S.cls])) setExp(L, S.cls, expFor(lv)); });
   else if (c === 'beat') edit((L, m) => { const b = m.beat[S.cls] || [], z = t.dataset.z; setBeat(L, S.cls, b.includes(z) ? b.filter((x) => x !== z) : b.concat(z)); });
   else if (c === 'stat') edit((L, m) => { const val = String(t.dataset.k === 'marks' ? marksIn(t.value) : num()); const row = m.stat.find((r) => r[0] === t.dataset.k); if (row) row[1] = val; else m.stat.push([t.dataset.k, val]); put(L, 'stat', any, `stat|${m.stat.map((r) => r.join('=')).join(',')}`); });
   else if (c === 'ach') edit((L, m) => toggleAch(L, m, t.dataset.id, t.checked));
