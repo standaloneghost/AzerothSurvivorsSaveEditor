@@ -376,7 +376,7 @@ async function load() {
   try {
     const j = await api('/api/load');
     Object.assign(S, { text: j.text, base: j.text, stamp: j.stamp, path: j.path, running: j.running, loaded: true, fatal: '', conflict: false, err: '' });
-    S.backups = await api('/api/backups');
+    S.backups = (await api('/api/backups')) || [];
   } catch (e) { S.fatal = e.message; }
   render();
 }
@@ -385,7 +385,7 @@ async function save() {
   try {
     const j = await api('/api/save', { text: S.text, stamp: S.stamp });
     S.base = S.text; S.stamp = j.stamp; S.toast = `Saved. Your previous save was backed up as ${j.backup}.`;
-    S.backups = await api('/api/backups');
+    S.backups = (await api('/api/backups')) || [];
   } catch (e) {
     if (e.kind === 'changed') S.conflict = true;
     else if (e.kind === 'running') S.running = true;
@@ -422,7 +422,7 @@ document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-a]');
   if (!t) return;
   const { a, v, z, k, id, i } = t.dataset;
-  if (a === 'page') { S.tab = v; S.confirm = ''; if (v === 'backups') api('/api/backups').then((b) => { S.backups = b; render(); }).catch(() => {}); render(); }
+  if (a === 'page') { S.tab = v; S.confirm = ''; if (v === 'backups') api('/api/backups').then((b) => { S.backups = b || []; render(); }).catch(() => {}); render(); }
   else if (a === 'cls') { S.cls = v; S.tab = 'class'; render(); }
   else if (a === 'achcat') { S.achCat = v; render(); }
   else if (a === 'rtab') { S.rewardTab = v; render(); }

@@ -190,7 +190,7 @@ type backup struct {
 
 func listBackups(p string) []backup {
 	root := filepath.Dir(p)
-	var out []backup
+	out := []backup{}
 	add := func(dir, source string, keep func(string) bool) {
 		es, _ := os.ReadDir(dir)
 		for _, e := range es {
