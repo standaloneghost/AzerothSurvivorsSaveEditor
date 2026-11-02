@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Save Editor</title>
+<style>
+:root{--bg:#14161b;--panel:#1b1e25;--side:#181a20;--deep:#101216;--line:#30343e;--line2:#2a2e37;--ctl:#4a505d;--ctl2:#3a3f4a;--text:#eceef2;--text2:#d7dbe3;--muted:#c3c8d2;--dim:#aab0bc;--gold:#e8b04a;--gold-ink:#1a1407;--gold-soft:#2b2a26;--gold-text:#f0d59b;--ok:#67c7a0;--ok-bg:#20372e;--ok-text:#bff0db;--err:#e8836f;--err-bg:#40241f;--err-text:#ffd5cc}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "IBM Plex Sans","Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{font-family:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+.mono{font-family:"IBM Plex Mono",Consolas,monospace}
+.app{min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header .title{flex:1 1 320px;min-width:0}
+h1{margin:0;font-size:19px;font-weight:700}
+.path{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.game{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--ok)}
+.dot.on{background:var(--err)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--ctl);background:transparent;color:var(--text);font-size:14px;font-weight:600}
+.btn:disabled{opacity:.55}
+.primary{border:0;background:var(--gold);color:var(--gold-ink);font-weight:700}
+.primary:disabled{background:var(--line);color:var(--muted);opacity:1}
+.banner{padding:10px 24px;font-size:14px;border-bottom:1px solid var(--line)}
+.banner.ok{background:var(--ok-bg);color:var(--ok-text)}
+.banner.err{background:var(--err-bg);color:var(--err-text)}
+.banner .btn{min-height:36px;margin-left:10px;color:inherit;border-color:currentColor}
+.body{display:flex;flex-wrap:wrap;flex:1 1 auto;align-items:stretch}
+nav{flex:1 1 230px;max-width:100%;padding:18px 14px;background:var(--side);border-right:1px solid var(--line)}
+.navh{padding:0 10px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.navl{display:flex;flex-direction:column;gap:4px;margin-bottom:18px}
+.navb{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:6px 12px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text);text-align:left}
+.navb.sel{border-color:var(--gold);background:var(--gold-soft)}
+.navb b{font-size:15px;font-weight:600}
+.navb span{font-size:12px;color:var(--muted);text-align:right}
+main{flex:999 1 640px;min-width:0;padding:20px 24px 32px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab{min-height:44px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-size:15px;font-weight:600}
+.tab.sel{border-bottom-color:var(--gold);color:var(--text)}
+h2{margin:0;font-size:26px;font-weight:700}
+.sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px}
+.head .sub{margin:0}
+.inline{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input[type=number],select{height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--ctl);background:var(--deep);color:var(--text);font-size:15px}
+input[type=number]{width:130px;font-family:"IBM Plex Mono",Consolas,monospace}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+.split{display:flex;flex-wrap:wrap;align-items:flex-start;gap:18px}
+.box{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.col-l{flex:999 1 620px;min-width:0}
+.col-r{flex:1 1 330px;min-width:0}
+.bar{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;min-height:72px;margin-bottom:14px}
+.bar .sub{margin:0}
+.bar .inline{margin-left:auto;justify-content:flex-end}
+.col-r .bar input{width:150px}
+.zones{overflow-x:auto}
+.zones table{width:100%;min-width:620px;border-collapse:collapse}
+.zones thead tr{text-align:left;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.zones thead th{padding:12px 16px;font-weight:600}
+.zones tbody tr{border-top:1px solid var(--line2)}
+.zones tbody th{padding:7px 16px;text-align:left;font-size:15px;font-weight:500}
+.zones td{padding:7px 16px}
+.chk{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;cursor:pointer}
+.seg{display:flex;gap:4px}
+.seg button{width:52px;height:44px;border-radius:6px;border:1px solid var(--ctl2);background:var(--bg);color:var(--text2);font-size:14px;font-weight:700}
+.seg button.sel{border-color:var(--gold);background:var(--gold);color:var(--gold-ink)}
+.seg.rank button{width:44px}
+.armor{padding:14px}
+.armor h3{margin:0;font-size:16px;font-weight:700}
+.armor .count{margin-bottom:10px;font-size:13px;color:var(--muted)}
+.armor table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px}
+.armor thead tr{font-size:11px;color:var(--muted)}
+.armor th{padding:2px;font-weight:600}
+.armor th.slot{width:72px;text-align:left}
+.armor tbody th{text-align:left;font-size:13px;font-weight:500}
+.cell{height:44px;padding:0;border-radius:5px;border:1px solid var(--line);text-align:center;font-family:"IBM Plex Mono",Consolas,monospace;font-size:12px;font-weight:500;color:var(--dim)}
+.cell.own{background:var(--gold-soft);border-color:#4a4638;color:var(--gold-text)}
+.cell.worn{border-color:var(--gold)}
+.cell.new{background:var(--ok-bg);color:var(--ok-text)}
+.cell.na{background:var(--bg);border-color:var(--line2)}
+.cell button{display:block;width:100%;height:44px;padding:0;border:0;border-radius:4px;background:transparent;color:inherit;font:inherit}
+.small{margin-top:10px;font-size:12px;color:var(--muted)}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px;margin-top:10px;font-size:12px;color:var(--text2)}
+.note{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--gold-soft);color:var(--gold-text);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.stat{display:flex;flex-direction:column;gap:6px;padding:14px;font-size:14px;color:var(--muted)}
+.stat input{width:100%;font-size:16px}
+.raw{display:block;width:100%;min-height:470px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--deep);color:var(--text2);font:13px/1.6 "IBM Plex Mono",Consolas,monospace;resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 16px;border-top:1px solid var(--line2)}
+.row:first-child{border-top:0}
+.row .n{min-width:0;font-size:13px;overflow-wrap:anywhere}
+.row .s{font-size:13px;color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pill{min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--ctl2);background:transparent;color:var(--text2);font-size:14px;font-weight:600}
+.pill.sel{border-color:var(--gold);background:var(--gold);color:var(--gold-ink)}
+.achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.ach{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;cursor:pointer}
+.ach input{flex:none}
+.ach b{display:block;font-size:15px;font-weight:600}
+.ach span span{display:block;font-size:13px;color:var(--muted)}
+.perks{display:flex;flex-direction:column;gap:8px}
+.perk{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 14px}
+.perk div:first-child{flex:1 1 240px;min-width:0}
+.perk b{display:block;font-size:15px;font-weight:600}
+.perk span{font-size:13px;color:var(--muted)}
+h3.sec{margin:18px 0 2px;font-size:15px;font-weight:700}
+.pickers{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.pickers .field{flex:1 1 260px}
+.pickers select{width:100%;font-size:14px}
+.pets{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.pet{display:flex;flex-direction:column;gap:6px;padding:10px 12px}
+.pet b{font-size:14px;font-weight:600}
+.pet small{font-size:12px;color:var(--muted)}
+.pet em{font-style:normal;font-size:12px;font-weight:600;color:var(--gold-text)}
+.opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 12px;font-size:14px;cursor:pointer}
+.later{padding:16px;font-size:14px;color:var(--muted)}
+.pending{margin-top:22px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--side)}
+.pending h3{margin:0 0 6px;font-size:14px;font-weight:700}
+.pending div{font-size:13px;color:var(--gold-text);font-family:"IBM Plex Mono",Consolas,monospace}
+.pending div.none{font-family:inherit;font-size:14px;color:var(--muted)}
+.fatal{max-width:640px;margin:15vh auto;padding:24px}
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+<script>
+/*DATA*/
+const TOKEN = new URLSearchParams(location.search).get('t');
+const S = { text: '', base: '', stamp: '', path: '', running: false, cls: '2', tab: 'class', achCat: 'Zones', rewardTab: 'Perks', toast: '', err: '', conflict: false, fatal: '', backups: [], confirm: '', busy: false, loaded: false };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ALLZ = ZONES.map((z) => z[0]);
+const DONE = (id) => DUAL_WIELD.includes(id);
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'X-Token': TOKEN, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({ error: 'The editor did not answer.', kind: 'net' }));
+  if (!r.ok) { const e = new Error(j.error || 'Something went wrong.'); e.kind = j.kind; throw e; }
+  return j;
+}
+
+/* ---------- reading the save ---------- */
+function parse(text) {
+  const m = { stat: [], marks: {}, beat: {}, heroic: {}, ach: [], achat: {}, perks: {}, pets: [], races: [], items: new Set(), stars: {}, worn: new Set() };
+  for (const line of text.split('\n')) {
+    const p = line.split('|'), k = p[0];
+    if (k === 'stat') m.stat = (p[1] || '').split(',').filter(Boolean).map((x) => x.split('='));
+    else if (k === 'marks') m.marks[p[1]] = Number(p[2]) || 0;
+    else if (k === 'beat') m.beat[p[1]] = (p[2] || '').split(',').filter(Boolean);
+    else if (k === 'hbeat') m.heroic[p[1]] = Object.fromEntries((p[2] || '').split(',').filter(Boolean).map((x) => { const [z, n] = x.split(':'); return [z, Number(n) || 0]; }));
+    else if (k === 'ach') m.ach = (p[1] || '').split(',').filter(Boolean);
+    else if (k === 'achat') m.achat = Object.fromEntries((p[1] || '').split(',').filter(Boolean).map((x) => x.split('=')));
+    else if (k === 'perk') m.perks = Object.fromEntries((p[1] || '').split(',').filter(Boolean).map((x) => { const [a, b] = x.split(':'); return [a, Number(b) || 0]; }));
+    else if (k === 'pets') m.pets = (p[1] || '').split(',').filter(Boolean);
+    else if (k === 'races') m.races = (p[1] || '').split(',').filter(Boolean).map(Number);
+    else if (k === 'items') (p[1] || '').split(',').filter(Boolean).forEach((x) => m.items.add(x));
+    else if (k === 'stars') (p[1] || '').split(',').filter(Boolean).forEach((x) => { const [a, b] = x.split(':'); m.stars[a] = Number(b) || 0; });
+    else if (k === 'equip') (p[2] || '').split(',').filter(Boolean).forEach((x) => m.worn.add(x.split(':')[1]));
+  }
+  return m;
+}
+
+/* ---------- writing: only the line being changed is touched ---------- */
+function put(L, kind, match, value) {
+  const i = L.findIndex((l) => l.split('|')[0] === kind && match(l));
+  if (value === null) { if (i >= 0) L.splice(i, 1); return; }
+  if (i >= 0) { L[i] = value; return; }
+  let last = -1;
+  L.forEach((l, j) => { if (l.split('|')[0] === kind) last = j; });
+  if (last < 0) { last = L.length - 1; while (last >= 0 && L[last] === '') last--; }
+  L.splice(last + 1, 0, value);
+}
+const ofClass = (c) => (l) => l.split('|')[1] === c;
+const any = () => true;
+function setMarks(L, c, n) { put(L, 'marks', ofClass(c), n > 0 ? `marks|${c}|${n}` : null); }
+function ordered(keys) { return ALLZ.filter((z) => keys.includes(z)).concat(keys.filter((z) => !ALLZ.includes(z))); }
+function setBeat(L, c, zs) { put(L, 'beat', ofClass(c), zs.length ? `beat|${c}|${ordered(zs).join(',')}` : null); }
+function setHeroic(L, c, h) {
+  const zs = ordered(Object.keys(h).filter((z) => h[z] > 0));
+  put(L, 'hbeat', ofClass(c), zs.length ? `hbeat|${c}|${zs.map((z) => `${z}:${h[z]}`).join(',')}` : null);
+}
+function setAch(L, m) {
+  const list = m.ach.slice().sort();
+  put(L, 'ach', any, `ach|${list.join(',')}`);
+  put(L, 'achat', any, `achat|${Object.keys(m.achat).sort().map((k) => `${k}=${m.achat[k]}`).join(',')}`);
+}
+function toggleAch(L, m, id, on) {
+  if (on && !m.ach.includes(id)) { m.ach.push(id); m.achat[id] = String(Math.floor(Date.now() / 1000)); }
+  if (!on) { m.ach = m.ach.filter((a) => a !== id); delete m.achat[id]; }
+  setAch(L, m);
+}
+function setPerks(L, p) { put(L, 'perk', any, `perk|${Object.keys(p).filter((k) => p[k] > 0).sort().map((k) => `${k}:${p[k]}`).join(',')}`); }
+function itemId(c, si, r) { return `1${c.padStart(2, '0')}${si}${r}0`; }
+
+function edit(fn) {
+  const L = S.text.split('\n'), m = parse(S.text);
+  fn(L, m);
+  S.text = L.join('\n');
+  S.toast = '';
+  render();
+}
+
+/* ---------- pending changes ---------- */
+function diff(a, b) {
+  const x = parse(a), y = parse(b), out = [];
+  const set = new Set();
+  CLASSES.forEach(([id, name]) => {
+    if ((x.marks[id] || 0) !== (y.marks[id] || 0)) out.push(`${name} marks: ${x.marks[id] || 0} → ${y.marks[id] || 0}`);
+    ZONES.forEach(([k, zn]) => {
+      const h0 = (x.heroic[id] || {})[k] || 0, h1 = (y.heroic[id] || {})[k] || 0;
+      if (h0 !== h1) out.push(`${name}, ${zn}: Heroic ${ROMAN[h0] || h0} → ${ROMAN[h1] || h1}`);
+      const c0 = (x.beat[id] || []).includes(k), c1 = (y.beat[id] || []).includes(k);
+      if (c0 !== c1) out.push(`${name}, ${zn}: ${c1 ? 'marked cleared' : 'clear removed'}`);
+    });
+  });
+  y.ach.filter((a2) => !x.ach.includes(a2)).forEach((a2) => out.push(`Achievement added: ${ACH_NAMES[a2] || a2}${y.achat[a2] ? `, dated ${new Date(Number(y.achat[a2]) * 1000).toLocaleString('en-US')}` : ''}`));
+  x.ach.filter((a2) => !y.ach.includes(a2)).forEach((a2) => out.push(`Achievement removed: ${ACH_NAMES[a2] || a2}`));
+  PERKS.concat(COMPANION_PERKS).forEach(([k, n]) => { if ((x.perks[k] || 0) !== (y.perks[k] || 0)) out.push(`${n}: rank ${x.perks[k] || 0} → ${y.perks[k] || 0}`); });
+  const petName = (k) => (PETS.find((p) => p[0] === k) || [k, k || 'none'])[1];
+  [0, 1].forEach((i) => { if (x.pets[i] !== y.pets[i]) out.push(`Companion slot ${i + 1}: ${petName(x.pets[i])} → ${petName(y.pets[i])}`); });
+  RACES.forEach(([k, n]) => { if (x.races.includes(k) !== y.races.includes(k)) out.push(`Race ${y.races.includes(k) ? 'added' : 'removed'}: ${n}`); });
+  y.items.forEach((id) => {
+    if (x.items.has(id)) return;
+    const mt = id.match(/^1(\d\d)(\d)(\d)0$/), c = mt && CLASSES.find((k) => k[0] === String(Number(mt[1])));
+    out.push(mt && c ? `${c[1]}, ${RARITY[Number(mt[3])][1]} ${SLOTS[Number(mt[2])] || 'piece'}: unlocked at base` : `Item added: ${id}`);
+  });
+  const stat0 = Object.fromEntries(x.stat), stat1 = Object.fromEntries(y.stat);
+  STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(`${l}: ${stat0[k]} → ${stat1[k]}`); });
+  const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat']);
+  const rest = (t) => t.split('\n').filter((l) => !known.has(l.split('|')[0]));
+  const r0 = rest(a), r1 = rest(b), seen = new Map();
+  r0.forEach((l) => seen.set(l, (seen.get(l) || 0) + 1));
+  let n = 0;
+  r1.forEach((l) => { if (seen.get(l)) seen.set(l, seen.get(l) - 1); else n++; });
+  if (n || r0.length !== r1.length) out.push(`Advanced: ${Math.max(n, 1)} other line${n === 1 ? '' : 's'} changed`);
+  if (a !== b && !out.length) out.push('Advanced: save text changed');
+  return out;
+}
+
+/* ---------- screens ---------- */
+function viewZones(m, name) {
+  const c = S.cls, beat = m.beat[c] || [], h = m.heroic[c] || {};
+  const rows = ZONES.map(([k, zn]) => `<tr><th scope="row">${esc(zn)}</th>
+    <td><label class="chk"><input type="checkbox" data-c="beat" data-z="${k}" aria-label="${esc(zn)} cleared" ${beat.includes(k) ? 'checked' : ''}></label></td>
+    <td><div class="seg" role="group" aria-label="Highest Heroic tier cleared in ${esc(zn)}">${ROMAN.map((lab, i) => `<button data-a="tier" data-z="${k}" data-v="${i}" class="${(h[k] || 0) === i ? 'sel' : ''}" aria-pressed="${(h[k] || 0) === i}" aria-label="${i ? `Heroic ${lab}` : 'No Heroic clear'} in ${esc(zn)}">${lab}</button>`).join('')}</div></td></tr>`).join('');
+  const locked = lockedPieces(m, c).length;
+  return `<div class="split"><div class="col-l"><div class="bar"><div><h2>${esc(name)}</h2><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
+      <div class="inline"><button class="btn" data-a="allz">Mark all zones cleared</button><button class="btn" data-a="allh5">Clear+H5</button></div></div>
+      <div class="box zones"><table><thead><tr><th scope="col">Zone</th><th scope="col">Cleared</th><th scope="col">Highest Heroic cleared</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" data-c="marks" value="${m.marks[c] || 0}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
+}
+function lockedPieces(m, c) {
+  const out = [], slots = DONE(c) ? 8 : 9;
+  for (let si = 0; si < slots; si++) COL_ORDER.forEach((r) => { const id = itemId(c, si, r); if (!m.items.has(id)) out.push(id); });
+  return out;
+}
+function viewArmor(m) {
+  const c = S.cls, b = parse(S.base), dual = DONE(c), rows = dual ? SLOTS.concat('Off Hand') : SLOTS;
+  let owned = 0;
+  const body = rows.map((slot, si) => `<tr><th scope="row">${esc(slot)}</th>${COL_ORDER.map((r) => {
+    const full = RARITY[r][1];
+    if (dual && si >= 8) return `<td class="cell na" title="${esc(`${slot}, ${full}: not editable yet`)}">N/A</td>`;
+    const id = itemId(c, si, r), has = m.items.has(id), isNew = has && !b.items.has(id), stars = m.stars[id] || 0, worn = has && m.worn.has(id);
+    if (has) owned++;
+    const label = isNew ? `${slot}, ${full}: unlocking on save. Select to undo` : `${slot}, ${full}: ${has ? `unlocked at +${stars}${worn ? ', worn' : ''}` : 'locked. Select to unlock the base version'}`;
+    const cls = `cell${has ? ' own' : ''}${worn ? ' worn' : ''}${isNew ? ' new' : ''}`;
+    if (!has || isNew) return `<td class="${cls}" title="${esc(label)}"><button data-a="item" data-id="${id}" aria-label="${esc(label)}">${isNew ? 'New' : '–'}</button></td>`;
+    return `<td class="${cls}" title="${esc(label)}"><span aria-label="${esc(label)}">+${stars}</span></td>`;
+  }).join('')}</tr>`).join('');
+  return `<aside class="box armor" aria-label="Armor unlocks"><h3>Armor unlocks</h3><div class="count">${owned} of ${dual ? 48 : 54} pieces unlocked</div>
+    <table><thead><tr><th class="slot" scope="col">Slot</th>${COL_ORDER.map((r) => `<th scope="col" title="${esc(RARITY[r][1])}">${RARITY[r][0]}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>
+    <div class="small">+N is the star level and a gold outline is worn. Select – to unlock a piece's base version, shown as New until you save.</div>
+    <div class="legend">${COL_ORDER.map((r) => `<div>${RARITY[r][0]}: ${esc(r === 5 ? "Field Marshal's / Warlord's" : SETS[c][r])}</div>`).join('')}</div>
+    ${dual ? `<div class="small">N/A: this class's weapons can't be edited yet.</div>` : ''}
+    <p class="note">To upgrade armor, add marks here, save, then launch the game and upgrade the gear in-game.</p></aside>`;
+}
+function viewLife(m) {
+  const st = Object.fromEntries(m.stat);
+  return `<h2>Lifetime stats</h2><p class="sub">Shared across every class.</p><div class="grid">${STAT_LABELS.map(([k, l]) => `<label class="box stat">${esc(l)}<input type="number" min="0" data-c="stat" data-k="${k}" value="${esc(st[k] ?? 0)}"></label>`).join('')}</div>`;
+}
+function viewRaw() {
+  return `<h2>Advanced</h2><p class="sub">Every record in the save, for anything without its own controls. Changes apply when you click outside the box.</p><textarea class="raw" id="raw" data-c="raw" aria-label="Save records" spellcheck="false">${esc(S.text)}</textarea>`;
+}
+function viewBackups() {
+  const rows = S.backups.map((b, i) => {
+    const key = `${b.source}/${b.name}`, ask = S.confirm === key;
+    return `<div class="row"><div><div class="n mono">${esc(b.name)}</div><div class="s">${esc(b.source)} · ${esc(new Date(b.time * 1000).toLocaleString('en-US'))}</div></div>
+      <button class="btn" data-a="restore" data-i="${i}" ${S.running ? 'disabled' : ''}>${ask ? 'Click again to restore' : 'Restore'}</button></div>`;
+  }).join('') || '<div class="row"><div class="s">No backups yet.</div></div>';
+  return `<h2>Backups</h2><p class="sub">The editor backs up your save before every write and restore. The game's own hourly backups appear here too.</p><div class="box rows">${rows}</div>`;
+}
+function viewAch(m) {
+  const all = Object.values(ACH).flat(), cat = ACH[S.achCat];
+  return `<h2>Achievements</h2><p class="sub">${all.filter((a) => m.ach.includes(a[0])).length} of ${all.length} earned. New ones are dated when you tick them.</p>
+    <div class="pills" role="group" aria-label="Achievement categories">${Object.keys(ACH).map((c) => `<button class="pill${S.achCat === c ? ' sel' : ''}" aria-pressed="${S.achCat === c}" data-a="achcat" data-v="${esc(c)}">${esc(c)} ${ACH[c].filter((a) => m.ach.includes(a[0])).length}/${ACH[c].length}</button>`).join('')}</div>
+    <div class="achs">${cat.map(([id, nm, desc]) => `<label class="box ach"><input type="checkbox" data-c="ach" data-id="${esc(id)}" ${m.ach.includes(id) ? 'checked' : ''}><span><b>${esc(nm)}</b><span>${esc(desc)}</span></span></label>`).join('')}</div>`;
+}
+function viewPerks(m, list) {
+  return `<div class="perks">${list.map(([k, nm, max, desc]) => `<div class="box perk"><div><b>${esc(nm)}</b><span>${esc(desc)}</span></div>
+    <div class="seg rank" role="group" aria-label="${esc(nm)} rank">${Array.from({ length: max + 1 }, (_, i) => `<button data-a="perk" data-k="${k}" data-v="${i}" class="${(m.perks[k] || 0) === i ? 'sel' : ''}" aria-pressed="${(m.perks[k] || 0) === i}" aria-label="${esc(nm)} rank ${i}">${i}</button>`).join('')}</div></div>`).join('')}</div>`;
+}
+function viewPets(m) {
+  const open = (p) => !p[2] || m.ach.includes(p[2]), hasTwo = (m.perks.second || 0) > 0;
+  const slot = (i) => {
+    const cur = m.pets[i] || '', opts = PETS.filter((p) => (open(p) && p[0] !== m.pets[1 - i]) || p[0] === cur);
+    return `<label class="field">${i ? 'Second companion' : 'First companion'}<select data-c="pet" data-i="${i}" ${i && !hasTwo ? 'disabled' : ''}>${opts.map((p) => `<option value="${p[0]}" ${p[0] === cur ? 'selected' : ''}>${esc(p[1])}</option>`).join('')}</select></label>`;
+  };
+  return `<h3 class="sec">Companions</h3><p class="sub">${PETS.filter(open).length} of ${PETS.length} unlocked. Companions unlock through achievements.</p><div class="pickers">${slot(0)}${slot(1)}</div>
+    <div class="grid pets">${PETS.map((p) => `<div class="box pet"><b>${esc(p[1])}</b><small>${!p[2] ? 'Available from the start' : `${open(p) ? 'Unlocked by' : 'Needs'} ${esc(ACH_NAMES[p[2]] || p[2])}`}</small>${open(p) ? `<em>${m.pets[0] === p[0] ? 'First companion' : m.pets[1] === p[0] ? 'Second companion' : 'Unlocked'}</em>` : `<button class="btn" data-a="earn" data-id="${esc(p[2])}">Earn achievement</button>`}</div>`).join('')}</div>`;
+}
+function viewRewards(m) {
+  const t = S.rewardTab;
+  let inner;
+  if (t === 'Perks') inner = viewPerks(m, PERKS);
+  else if (t === 'Companions') inner = viewPerks(m, COMPANION_PERKS) + viewPets(m);
+  else if (t === 'Races') inner = `<div class="grid">${RACES.map(([k, n]) => `<label class="box opt"><input type="checkbox" data-c="race" data-k="${k}" ${m.races.includes(k) ? 'checked' : ''}>${esc(n)}</label>`).join('')}</div>`;
+  else inner = `<div class="box later">${esc(t)} can't be edited yet.</div>`;
+  return `<h2>Rewards</h2><p class="sub">Shared by every class.</p><div class="pills" role="group" aria-label="Reward types">${['Perks', 'Companions', 'Races', 'Tabards', 'Appearances'].map((r) => `<button class="pill${t === r ? ' sel' : ''}" aria-pressed="${t === r}" data-a="rtab" data-v="${r}">${r}</button>`).join('')}</div>${inner}`;
+}
+
+function render() {
+  const root = document.getElementById('app');
+  if (S.fatal) { root.innerHTML = `<div class="box fatal"><h2>Can't open your save</h2><p class="sub">${esc(S.fatal)}</p><button class="btn" data-a="reload">Try again</button></div>`; return; }
+  if (!S.loaded) { root.innerHTML = '<div class="box fatal">Opening your save…</div>'; return; }
+  const raw = document.getElementById('raw');
+  const rawTop = raw ? raw.scrollTop : 0;
+  const m = parse(S.text), changes = diff(S.base, S.text), n = changes.length;
+  const name = CLASSES.find((c) => c[0] === S.cls)[1];
+  const nav = (a, v, label, sub, sel) => `<button class="navb${sel ? ' sel' : ''}" aria-pressed="${sel}" data-a="${a}" data-v="${v}"><b>${esc(label)}</b><span>${esc(sub)}</span></button>`;
+  const allAch = Object.values(ACH).flat().filter((a) => m.ach.includes(a[0])).length;
+  const views = { class: () => viewZones(m, name), life: () => viewLife(m), raw: viewRaw, backups: viewBackups, ach: () => viewAch(m), rewards: () => viewRewards(m) };
+  const canSave = n > 0 && !S.running && !S.busy && !S.conflict;
+  root.innerHTML = `<header><div class="title"><h1>Azeroth Survivors Save Editor</h1><div class="path mono">${esc(S.path)}</div></div>
+    <div class="game" role="status"><i class="dot${S.running ? ' on' : ''}"></i>${S.running ? 'Game running: close it to save' : 'Game closed'}</div>
+    <div class="actions"><button class="btn" data-a="discard" ${n ? '' : 'disabled'}>Discard changes</button><button class="btn primary" data-a="save" ${canSave ? '' : 'disabled'}>${n ? `Save ${n} change${n === 1 ? '' : 's'}` : 'Save'}</button></div></header>
+    ${S.conflict ? `<div class="banner err" role="alert">The game changed your save since it was opened. Reload to get the latest version; your unsaved edits here will be discarded.<button class="btn" data-a="reload">Reload save</button></div>` : ''}
+    ${S.err ? `<div class="banner err" role="alert">${esc(S.err)}</div>` : ''}
+    ${S.toast ? `<div class="banner ok" role="status">${esc(S.toast)}</div>` : ''}
+    <div class="body"><nav aria-label="Sections">
+      <div class="navh">Player</div><div class="navl">${nav('page', 'ach', 'Achievements', `${allAch} earned`, S.tab === 'ach')}${nav('page', 'rewards', 'Rewards', `${Object.values(m.perks).filter((v) => v > 0).length} perks`, S.tab === 'rewards')}</div>
+      <div class="navh">Classes</div><div class="navl">${CLASSES.map(([id, nm]) => nav('cls', id, nm, `${(m.marks[id] || 0).toLocaleString('en-US')} marks · ${Object.values(m.heroic[id] || {}).filter((v) => v > 0).length} Heroic`, S.tab === 'class' && S.cls === id)).join('')}</div>
+    </nav><main>
+      <div class="tabs" role="tablist" aria-label="Sections">${[['class', 'Zones'], ['life', 'Lifetime stats'], ['raw', 'Advanced'], ['backups', 'Backups']].map(([k, nm]) => `<button class="tab${S.tab === k ? ' sel' : ''}" role="tab" aria-selected="${S.tab === k}" data-a="page" data-v="${k}">${nm}</button>`).join('')}</div>
+      ${views[S.tab]()}
+      <section class="pending" aria-label="Pending changes"><h3>Pending changes</h3>${n ? changes.map((c) => `<div>${esc(c)}</div>`).join('') : '<div class="none">Nothing changed yet.</div>'}</section>
+    </main></div>`;
+  const r2 = document.getElementById('raw');
+  if (r2) r2.scrollTop = rawTop;
+}
+
+/* ---------- loading and saving ---------- */
+async function load() {
+  try {
+    const j = await api('/api/load');
+    Object.assign(S, { text: j.text, base: j.text, stamp: j.stamp, path: j.path, running: j.running, loaded: true, fatal: '', conflict: false, err: '' });
+    S.backups = await api('/api/backups');
+  } catch (e) { S.fatal = e.message; }
+  render();
+}
+async function save() {
+  S.busy = true; S.err = ''; render();
+  try {
+    const j = await api('/api/save', { text: S.text, stamp: S.stamp });
+    S.base = S.text; S.stamp = j.stamp; S.toast = `Saved. Your previous save was backed up as ${j.backup}.`;
+    S.backups = await api('/api/backups');
+  } catch (e) {
+    if (e.kind === 'changed') S.conflict = true;
+    else if (e.kind === 'running') S.running = true;
+    S.err = e.kind === 'changed' ? '' : e.message;
+  }
+  S.busy = false; render();
+}
+async function restore(b) {
+  S.err = ''; S.confirm = '';
+  try {
+    const j = await api('/api/restore', { name: b.name, source: b.source });
+    await load();
+    S.toast = `Restored ${b.name}. The save it replaced was backed up as ${j.backup}.`;
+  } catch (e) { S.err = e.message; }
+  render();
+}
+async function poll() {
+  try {
+    const j = await api('/api/status');
+    const dirty = S.text !== S.base;
+    let again = j.running !== S.running;
+    S.running = j.running;
+    if (S.loaded && j.stamp && j.stamp !== S.stamp && !S.busy) {
+      if (dirty) { if (!S.conflict) { S.conflict = true; again = true; } }
+      else { await load(); S.toast = 'Your save changed in the game, so the latest version was loaded.'; again = true; }
+    }
+    const active = document.activeElement;
+    if (again && !(active && active.id === 'raw')) render();
+  } catch (e) { /* the app has closed; the page stays readable */ }
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-a]');
+  if (!t) return;
+  const { a, v, z, k, id, i } = t.dataset;
+  if (a === 'page') { S.tab = v; S.confirm = ''; if (v === 'backups') api('/api/backups').then((b) => { S.backups = b; render(); }).catch(() => {}); render(); }
+  else if (a === 'cls') { S.cls = v; S.tab = 'class'; render(); }
+  else if (a === 'achcat') { S.achCat = v; render(); }
+  else if (a === 'rtab') { S.rewardTab = v; render(); }
+  else if (a === 'tier') edit((L, m) => { const h = m.heroic[S.cls] || {}; h[z] = Number(v); setHeroic(L, S.cls, h); const b = m.beat[S.cls] || []; if (Number(v) > 0 && !b.includes(z)) setBeat(L, S.cls, b.concat(z)); });
+  else if (a === 'allz') edit((L) => setBeat(L, S.cls, ALLZ.slice()));
+  else if (a === 'allh5') edit((L, m) => { const h = m.heroic[S.cls] || {}; ALLZ.forEach((z) => { h[z] = 5; }); setBeat(L, S.cls, ALLZ.slice()); setHeroic(L, S.cls, h); });
+  else if (a === 'item') edit((L, m) => { if (m.items.has(id)) m.items.delete(id); else m.items.add(id); put(L, 'items', any, `items|${[...m.items].sort((x, y) => Number(x) - Number(y)).join(',')}`); });
+  else if (a === 'unlockall') edit((L, m) => { lockedPieces(m, S.cls).forEach((x) => m.items.add(x)); put(L, 'items', any, `items|${[...m.items].sort((x, y) => Number(x) - Number(y)).join(',')}`); });
+  else if (a === 'perk') edit((L, m) => { m.perks[k] = Number(v); setPerks(L, m.perks); });
+  else if (a === 'earn') edit((L, m) => toggleAch(L, m, id, true));
+  else if (a === 'discard') { S.text = S.base; S.toast = ''; S.err = ''; render(); }
+  else if (a === 'save') save();
+  else if (a === 'reload') load();
+  else if (a === 'restore') {
+    const b = S.backups[Number(i)], key = `${b.source}/${b.name}`;
+    if (S.confirm === key) restore(b); else { S.confirm = key; render(); }
+  }
+});
+document.addEventListener('change', (e) => {
+  const t = e.target, c = t.dataset.c;
+  if (!c) return;
+  const num = () => Math.max(0, parseInt(t.value, 10) || 0);
+  if (c === 'marks') edit((L) => setMarks(L, S.cls, num()));
+  else if (c === 'beat') edit((L, m) => { const b = m.beat[S.cls] || [], z = t.dataset.z; setBeat(L, S.cls, b.includes(z) ? b.filter((x) => x !== z) : b.concat(z)); });
+  else if (c === 'stat') edit((L, m) => { const row = m.stat.find((r) => r[0] === t.dataset.k); if (row) row[1] = String(num()); else m.stat.push([t.dataset.k, String(num())]); put(L, 'stat', any, `stat|${m.stat.map((r) => r.join('=')).join(',')}`); });
+  else if (c === 'ach') edit((L, m) => toggleAch(L, m, t.dataset.id, t.checked));
+  else if (c === 'pet') edit((L, m) => { const p = [m.pets[0] || 'squirrel', m.pets[1] || 'squirrel']; p[Number(t.dataset.i)] = t.value; put(L, 'pets', any, `pets|${p.join(',')}`); });
+  else if (c === 'race') edit((L, m) => { const k = Number(t.dataset.k), r = m.races.includes(k) ? m.races.filter((x) => x !== k) : m.races.concat(k); put(L, 'races', any, `races|${r.sort((x, y) => x - y).join(',')}`); });
+  else if (c === 'raw') { S.text = t.value; S.toast = ''; render(); }
+});
+window.addEventListener('beforeunload', (e) => { if (S.text !== S.base) e.preventDefault(); });
+render();
+load();
+setInterval(poll, 4000);
+</script>
+</body>
+</html>

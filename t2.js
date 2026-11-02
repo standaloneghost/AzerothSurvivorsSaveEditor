@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+const { execFileSync } = require('child_process');
+const [url, save] = process.argv.slice(2);
+const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(url); await p.waitForSelector('h2');
+  const before = dec(save);
+  await p.click('button[data-a=cls][data-v="11"]');
+  await p.click('button[data-a=allh5]');
+  await p.click('button[data-a=cls][data-v="8"]');
+  await p.click('button[data-a=allh5]');
+  await p.screenshot({ path: '../shots/h5.png', clip: { x: 230, y: 70, width: 1050, height: 300 } });
+  await p.click('button[data-a=save]'); await p.waitForSelector('.banner.ok');
+  const A = before.split('\n'), B = dec(save).split('\n');
+  console.log(B.filter((l) => !A.includes(l)).join('\n'));
+  console.log('removed:', A.filter((l) => !B.includes(l)).join(' / '));
+  console.log('errors:', errs.length);
+  await b.close();
+})();
