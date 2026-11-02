@@ -251,7 +251,7 @@ function diff(a, b) {
   y.items.forEach((id) => {
     if (x.items.has(id)) return;
     const mt = id.match(/^1(\d\d)(\d)(\d)0$/), c = mt && CLASSES.find((k) => k[0] === String(Number(mt[1])));
-    out.push(mt && c ? `${c[1]}, ${RARITY[Number(mt[3])][1]} ${SLOTS[Number(mt[2])] || 'piece'}: unlocked at base` : `Item added: ${id}`);
+    out.push(mt && c ? `${c[1]}, ${RARITY[Number(mt[3])][1]} ${SLOTS.concat('Off Hand')[Number(mt[2])] || 'piece'}: unlocked at base` : `Item added: ${id}`);
   });
   const stat0 = Object.fromEntries(x.stat), stat1 = Object.fromEntries(y.stat);
   STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(k === 'marks' ? `${l}: ${marksText(stat0[k])} → ${marksText(stat1[k])}` : `${l}: ${stat0[k]} → ${stat1[k]}`); });
@@ -279,7 +279,7 @@ function viewZones(m, name) {
     <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" step="0.1" data-c="marks" value="${marksOut(m.marks[c] || 0)}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
 }
 function lockedPieces(m, c) {
-  const out = [], slots = DONE(c) ? 8 : 9;
+  const out = [], slots = DONE(c) ? 10 : 9;
   for (let si = 0; si < slots; si++) COL_ORDER.forEach((r) => { const id = itemId(c, si, r); if (!m.items.has(id)) out.push(id); });
   return out;
 }
@@ -288,7 +288,6 @@ function viewArmor(m) {
   let owned = 0;
   const body = rows.map((slot, si) => `<tr><th scope="row">${esc(slot)}</th>${COL_ORDER.map((r) => {
     const full = RARITY[r][1];
-    if (dual && si >= 8) return `<td class="cell na" title="${esc(`${slot}, ${full}: not editable yet`)}">N/A</td>`;
     const id = itemId(c, si, r), has = m.items.has(id), isNew = has && !b.items.has(id), stars = m.stars[id] || 0, worn = has && m.worn.has(id);
     if (has) owned++;
     const label = isNew ? `${slot}, ${full}: unlocking on save. Select to undo` : `${slot}, ${full}: ${has ? `unlocked at +${stars}${worn ? ', worn' : ''}` : 'locked. Select to unlock the base version'}`;
@@ -296,11 +295,10 @@ function viewArmor(m) {
     if (!has || isNew) return `<td class="${cls}" title="${esc(label)}"><button data-a="item" data-id="${id}" aria-label="${esc(label)}">${isNew ? 'New' : '–'}</button></td>`;
     return `<td class="${cls}" title="${esc(label)}"><span aria-label="${esc(label)}">+${stars}</span></td>`;
   }).join('')}</tr>`).join('');
-  return `<aside class="box armor" aria-label="Armor unlocks"><h3>Armor unlocks</h3><div class="count">${owned} of ${dual ? 48 : 54} pieces unlocked</div>
+  return `<aside class="box armor" aria-label="Armor unlocks"><h3>Armor unlocks</h3><div class="count">${owned} of ${dual ? 60 : 54} pieces unlocked</div>
     <table><thead><tr><th class="slot" scope="col">Slot</th>${COL_ORDER.map((r) => `<th scope="col" title="${esc(RARITY[r][1])}">${RARITY[r][0]}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>
     <div class="small">+N is the star level and a gold outline is worn. Select – to unlock a piece's base version, shown as New until you save.</div>
     <div class="legend">${COL_ORDER.map((r) => `<div>${RARITY[r][0]}: ${esc(r === 5 ? "Field Marshal's / Warlord's" : SETS[c][r])}</div>`).join('')}</div>
-    ${dual ? `<div class="small">N/A: this class's weapons can't be edited yet.</div>` : ''}
     <p class="note">To upgrade armor, add marks here, save, then launch the game and upgrade the gear in-game.</p></aside>`;
 }
 function viewLife(m) {
