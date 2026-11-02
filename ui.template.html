@@ -137,6 +137,10 @@ const S = { text: '', base: '', stamp: '', path: '', running: false, cls: '2', t
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ALLZ = ZONES.map((z) => z[0]);
 const DONE = (id) => DUAL_WIELD.includes(id);
+/* The save stores marks in tenths, so 80000 in the file is 8,000 in-game. */
+const marksOut = (raw) => Number(raw) / 10;
+const marksIn = (v) => Math.max(0, Math.round((parseFloat(v) || 0) * 10));
+const marksText = (raw) => marksOut(raw).toLocaleString('en-US', { maximumFractionDigits: 1 });
 
 async function api(path, body) {
   const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'X-Token': TOKEN, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
@@ -211,7 +215,7 @@ function diff(a, b) {
   const x = parse(a), y = parse(b), out = [];
   const set = new Set();
   CLASSES.forEach(([id, name]) => {
-    if ((x.marks[id] || 0) !== (y.marks[id] || 0)) out.push(`${name} marks: ${x.marks[id] || 0} → ${y.marks[id] || 0}`);
+    if ((x.marks[id] || 0) !== (y.marks[id] || 0)) out.push(`${name} marks: ${marksText(x.marks[id] || 0)} → ${marksText(y.marks[id] || 0)}`);
     ZONES.forEach(([k, zn]) => {
       const h0 = (x.heroic[id] || {})[k] || 0, h1 = (y.heroic[id] || {})[k] || 0;
       if (h0 !== h1) out.push(`${name}, ${zn}: Heroic ${ROMAN[h0] || h0} → ${ROMAN[h1] || h1}`);
@@ -231,7 +235,7 @@ function diff(a, b) {
     out.push(mt && c ? `${c[1]}, ${RARITY[Number(mt[3])][1]} ${SLOTS[Number(mt[2])] || 'piece'}: unlocked at base` : `Item added: ${id}`);
   });
   const stat0 = Object.fromEntries(x.stat), stat1 = Object.fromEntries(y.stat);
-  STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(`${l}: ${stat0[k]} → ${stat1[k]}`); });
+  STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(k === 'marks' ? `${l}: ${marksText(stat0[k])} → ${marksText(stat1[k])}` : `${l}: ${stat0[k]} → ${stat1[k]}`); });
   const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat']);
   const rest = (t) => t.split('\n').filter((l) => !known.has(l.split('|')[0]));
   const r0 = rest(a), r1 = rest(b), seen = new Map();
@@ -253,7 +257,7 @@ function viewZones(m, name) {
   return `<div class="split"><div class="col-l"><div class="bar"><div><h2>${esc(name)}</h2><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
       <div class="inline"><button class="btn" data-a="allz">Mark all zones cleared</button><button class="btn" data-a="allh5">Clear+H5</button></div></div>
       <div class="box zones"><table><thead><tr><th scope="col">Zone</th><th scope="col">Cleared</th><th scope="col">Highest Heroic cleared</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-    <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" data-c="marks" value="${m.marks[c] || 0}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
+    <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" step="0.1" data-c="marks" value="${marksOut(m.marks[c] || 0)}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
 }
 function lockedPieces(m, c) {
   const out = [], slots = DONE(c) ? 8 : 9;
@@ -282,7 +286,7 @@ function viewArmor(m) {
 }
 function viewLife(m) {
   const st = Object.fromEntries(m.stat);
-  return `<h2>Lifetime stats</h2><p class="sub">Shared across every class.</p><div class="grid">${STAT_LABELS.map(([k, l]) => `<label class="box stat">${esc(l)}<input type="number" min="0" data-c="stat" data-k="${k}" value="${esc(st[k] ?? 0)}"></label>`).join('')}</div>`;
+  return `<h2>Lifetime stats</h2><p class="sub">Shared across every class.</p><div class="grid">${STAT_LABELS.map(([k, l]) => `<label class="box stat">${esc(l)}<input type="number" min="0" ${k === 'marks' ? 'step="0.1"' : ''} data-c="stat" data-k="${k}" value="${esc(k === 'marks' ? marksOut(st[k] ?? 0) : st[k] ?? 0)}"></label>`).join('')}</div>`;
 }
 function viewRaw() {
   return `<h2>Advanced</h2><p class="sub">Every record in the save, for anything without its own controls. Changes apply when you click outside the box.</p><textarea class="raw" id="raw" data-c="raw" aria-label="Save records" spellcheck="false">${esc(S.text)}</textarea>`;
@@ -344,7 +348,7 @@ function render() {
     ${S.toast ? `<div class="banner ok" role="status">${esc(S.toast)}</div>` : ''}
     <div class="body"><nav aria-label="Sections">
       <div class="navh">Player</div><div class="navl">${nav('page', 'ach', 'Achievements', `${allAch} earned`, S.tab === 'ach')}${nav('page', 'rewards', 'Rewards', `${Object.values(m.perks).filter((v) => v > 0).length} perks`, S.tab === 'rewards')}</div>
-      <div class="navh">Classes</div><div class="navl">${CLASSES.map(([id, nm]) => nav('cls', id, nm, `${(m.marks[id] || 0).toLocaleString('en-US')} marks · ${Object.values(m.heroic[id] || {}).filter((v) => v > 0).length} Heroic`, S.tab === 'class' && S.cls === id)).join('')}</div>
+      <div class="navh">Classes</div><div class="navl">${CLASSES.map(([id, nm]) => nav('cls', id, nm, `${marksText(m.marks[id] || 0)} marks ·${Object.values(m.heroic[id] || {}).filter((v) => v > 0).length} Heroic`, S.tab === 'class' && S.cls === id)).join('')}</div>
     </nav><main>
       <div class="tabs" role="tablist" aria-label="Sections">${[['class', 'Zones'], ['life', 'Lifetime stats'], ['raw', 'Advanced'], ['backups', 'Backups']].map(([k, nm]) => `<button class="tab${S.tab === k ? ' sel' : ''}" role="tab" aria-selected="${S.tab === k}" data-a="page" data-v="${k}">${nm}</button>`).join('')}</div>
       ${views[S.tab]()}
@@ -428,9 +432,9 @@ document.addEventListener('change', (e) => {
   const t = e.target, c = t.dataset.c;
   if (!c) return;
   const num = () => Math.max(0, parseInt(t.value, 10) || 0);
-  if (c === 'marks') edit((L) => setMarks(L, S.cls, num()));
+  if (c === 'marks') edit((L) => setMarks(L, S.cls, marksIn(t.value)));
   else if (c === 'beat') edit((L, m) => { const b = m.beat[S.cls] || [], z = t.dataset.z; setBeat(L, S.cls, b.includes(z) ? b.filter((x) => x !== z) : b.concat(z)); });
-  else if (c === 'stat') edit((L, m) => { const row = m.stat.find((r) => r[0] === t.dataset.k); if (row) row[1] = String(num()); else m.stat.push([t.dataset.k, String(num())]); put(L, 'stat', any, `stat|${m.stat.map((r) => r.join('=')).join(',')}`); });
+  else if (c === 'stat') edit((L, m) => { const val = String(t.dataset.k === 'marks' ? marksIn(t.value) : num()); const row = m.stat.find((r) => r[0] === t.dataset.k); if (row) row[1] = val; else m.stat.push([t.dataset.k, val]); put(L, 'stat', any, `stat|${m.stat.map((r) => r.join('=')).join(',')}`); });
   else if (c === 'ach') edit((L, m) => toggleAch(L, m, t.dataset.id, t.checked));
   else if (c === 'pet') edit((L, m) => { const p = [m.pets[0] || 'squirrel', m.pets[1] || 'squirrel']; p[Number(t.dataset.i)] = t.value; put(L, 'pets', any, `pets|${p.join(',')}`); });
   else if (c === 'race') edit((L, m) => { const k = Number(t.dataset.k), r = m.races.includes(k) ? m.races.filter((x) => x !== k) : m.races.concat(k); put(L, 'races', any, `races|${r.sort((x, y) => x - y).join(',')}`); });

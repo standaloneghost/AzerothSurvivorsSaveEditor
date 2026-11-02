@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+const { execFileSync } = require('child_process');
+const [url, save] = process.argv.slice(2);
+const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const m = (t) => t.split('\n').filter((l) => l.startsWith('marks|') || l.startsWith('stat|')).join(' ');
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(url); await p.waitForSelector('h2');
+  const before = dec(save);
+  console.log('shown', await p.inputValue('input[data-c=marks]'), '|', await p.textContent('.navb.sel'));
+  await p.fill('input[data-c=marks]', '8000'); await p.press('input[data-c=marks]', 'Tab');
+  await p.click('button[data-a=cls][data-v="8"]');
+  await p.fill('input[data-c=marks]', '250.5'); await p.press('input[data-c=marks]', 'Tab');
+  await p.click('button[data-a=page][data-v=life]');
+  console.log('lifetime shown', await p.inputValue('input[data-k=marks]'));
+  await p.fill('input[data-k=marks]', '2000.5'); await p.press('input[data-k=marks]', 'Tab');
+  console.log((await p.textContent('.pending')).slice(0, 170));
+  await p.click('button[data-a=save]'); await p.waitForSelector('.banner.ok');
+  console.log(m(dec(save)));
+  const A = before.split('\n'), B = dec(save).split('\n');
+  console.log('changed kinds', [...new Set(B.filter((l) => !A.includes(l)).map((l) => l.split('|')[0]))].join(), 'errors', errs.length);
+  await b.close();
+})();
