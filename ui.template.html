@@ -273,7 +273,7 @@ function viewZones(m, name) {
     <td><label class="chk"><input type="checkbox" data-c="beat" data-z="${k}" aria-label="${esc(zn)} cleared" ${beat.includes(k) ? 'checked' : ''}></label></td>
     <td><div class="seg" role="group" aria-label="Highest Heroic tier cleared in ${esc(zn)}">${ROMAN.map((lab, i) => `<button data-a="tier" data-z="${k}" data-v="${i}" class="${(h[k] || 0) === i ? 'sel' : ''}" aria-pressed="${(h[k] || 0) === i}" aria-label="${i ? `Heroic ${lab}` : 'No Heroic clear'} in ${esc(zn)}">${lab}</button>`).join('')}</div></td></tr>`).join('');
   const locked = lockedPieces(m, c).length;
-  return `<div class="split"><div class="col-l"><div class="bar"><div><div class="lvlrow"><h2>${esc(name)}</h2><label class="lvlf">Level<input type="number" min="0" max="${MAX_LEVEL}" data-c="level" value="${levelOf(m.talent[c])}"></label></div><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
+  return `<div class="split"><div class="col-l"><div class="bar"><div><div class="lvlrow"><h2>${esc(name)}</h2><label class="lvlf">Level<input type="number" min="0" max="${MAX_LEVEL}" data-c="level" value="${levelOf(m.talent[c])}"></label><button class="btn" data-a="maxlevel">Max</button></div><p class="sub">${beat.length} of 12 zones cleared · ${Object.values(h).filter((v) => v > 0).length} with Heroic clears</p></div>
       <div class="inline"><button class="btn" data-a="allz">Mark all zones cleared</button><button class="btn" data-a="allh5">Clear+H5</button></div></div>
       <div class="box zones"><table><thead><tr><th scope="col">Zone</th><th scope="col">Cleared</th><th scope="col">Highest Heroic cleared</th></tr></thead><tbody>${rows}</tbody></table></div></div>
     <div class="col-r"><div class="bar"><label class="field">Marks<input type="number" min="0" step="0.1" data-c="marks" value="${marksOut(m.marks[c] || 0)}"></label><button class="btn" data-a="unlockall" ${locked ? '' : 'disabled'}>Unlock all</button></div>${viewArmor(m)}</div></div>`;
@@ -433,6 +433,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'achcat') { S.achCat = v; render(); }
   else if (a === 'rtab') { S.rewardTab = v; render(); }
   else if (a === 'tier') edit((L, m) => { const h = m.heroic[S.cls] || {}; h[z] = Number(v); setHeroic(L, S.cls, h); const b = m.beat[S.cls] || []; if (Number(v) > 0 && !b.includes(z)) setBeat(L, S.cls, b.concat(z)); });
+  else if (a === 'maxlevel') edit((L) => setExp(L, S.cls, expFor(MAX_LEVEL)));
   else if (a === 'allz') edit((L) => setBeat(L, S.cls, ALLZ.slice()));
   else if (a === 'allh5') edit((L, m) => { const h = m.heroic[S.cls] || {}; ALLZ.forEach((z) => { h[z] = 5; }); setBeat(L, S.cls, ALLZ.slice()); setHeroic(L, S.cls, h); });
   else if (a === 'item') edit((L, m) => { if (m.items.has(id)) m.items.delete(id); else m.items.add(id); put(L, 'items', any, `items|${[...m.items].sort((x, y) => Number(x) - Number(y)).join(',')}`); });

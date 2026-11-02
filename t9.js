@@ -1,0 +1,27 @@
+const { chromium } = require('playwright');
+const { execFileSync } = require('child_process');
+const [url, save] = process.argv.slice(2);
+const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(url); await p.waitForSelector('h2');
+  const orig = dec(save);
+  const go = (c) => p.click(`button[data-a=cls][data-v="${c}"]`);
+  await go('1'); await p.click('button[data-a=maxlevel]');
+  ok(await p.inputValue('input[data-c=level]') === '200', 'warrior shows level 200');
+  await go('8'); await p.click('button[data-a=maxlevel]');
+  await p.screenshot({ path: '../shots/max.png', clip: { x: 230, y: 70, width: 1050, height: 210 } });
+  await p.click('button[data-a=save]'); await p.waitForSelector('.banner.ok');
+  const t = dec(save);
+  ok(ln(t, 'talent|1|') === 'talent|1|314500|', 'class with no line gets 314500');
+  ok(ln(t, 'talent|8|') === ln(orig, 'talent|8|').replace('|140158|', '|314500|'), 'mage experience set, talents kept');
+  ok(t.split('\n').filter((l) => !orig.split('\n').includes(l)).length === 2, 'only two lines changed');
+  await go('8'); await p.click('button[data-a=maxlevel]');
+  ok((await p.textContent('.pending')).includes('Nothing changed'), 'Max on a maxed class changes nothing');
+  ok(errs.length === 0, 'no page errors');
+  console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
+  await b.close();
+})().catch((e) => { console.error(e); process.exit(1); });
