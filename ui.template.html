@@ -39,9 +39,6 @@ nav{flex:1 1 230px;max-width:100%;padding:18px 14px;background:var(--side);borde
 .navb b{font-size:15px;font-weight:600}
 .navb span{font-size:12px;color:var(--muted);text-align:right}
 main{flex:999 1 640px;min-width:0;padding:20px 24px 32px}
-.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
-.tab{min-height:44px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-size:15px;font-weight:600}
-.tab.sel{border-bottom-color:var(--gold);color:var(--text)}
 h2{margin:0;font-size:26px;font-weight:700}
 .sub{margin:0 0 14px;color:var(--muted);font-size:14px}
 .head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px}
@@ -364,10 +361,9 @@ function render() {
     ${S.err ? `<div class="banner err" role="alert">${esc(S.err)}</div>` : ''}
     ${S.toast ? `<div class="banner ok" role="status">${esc(S.toast)}</div>` : ''}
     <div class="body"><nav aria-label="Sections">
-      <div class="navh">Player</div><div class="navl">${nav('page', 'ach', 'Achievements', `${allAch} earned`, S.tab === 'ach')}${nav('page', 'rewards', 'Rewards', `${Object.values(m.perks).filter((v) => v > 0).length} perks`, S.tab === 'rewards')}</div>
+      <div class="navh">Player</div><div class="navl">${nav('page', 'ach', 'Achievements', `${allAch} earned`, S.tab === 'ach')}${nav('page', 'rewards', 'Rewards', `${Object.values(m.perks).filter((v) => v > 0).length} perks`, S.tab === 'rewards')}${nav('page', 'life', 'Lifetime stats', '', S.tab === 'life')}${nav('page', 'raw', 'Advanced', '', S.tab === 'raw')}${nav('page', 'backups', 'Backups', `${S.backups.length} saved`, S.tab === 'backups')}</div>
       <div class="navh">Classes</div><div class="navl">${CLASSES.map(([id, nm]) => nav('cls', id, nm, `${marksText(m.marks[id] || 0)} marks ·${Object.values(m.heroic[id] || {}).filter((v) => v > 0).length} Heroic`, S.tab === 'class' && S.cls === id)).join('')}</div>
     </nav><main>
-      <div class="tabs" role="tablist" aria-label="Sections">${[['class', 'Zones'], ['life', 'Lifetime stats'], ['raw', 'Advanced'], ['backups', 'Backups']].map(([k, nm]) => `<button class="tab${S.tab === k ? ' sel' : ''}" role="tab" aria-selected="${S.tab === k}" data-a="page" data-v="${k}">${nm}</button>`).join('')}</div>
       ${views[S.tab]()}
       <section class="pending" aria-label="Pending changes"><h3>Pending changes</h3>${n ? changes.map((c) => `<div>${esc(c)}</div>`).join('') : '<div class="none">Nothing changed yet.</div>'}</section>
     </main></div>`;
