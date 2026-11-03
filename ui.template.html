@@ -14,8 +14,19 @@ button{cursor:pointer}
 button:disabled{cursor:not-allowed}
 .mono{font-family:"IBM Plex Mono",Consolas,monospace}
 .app{min-height:100vh;display:flex;flex-direction:column}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-header .title{flex:1 1 320px;min-width:0}
+header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px 20px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header .title{min-width:0}
+.hright{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:12px 20px;min-width:0}
+.danger{background:#b5472f;border:0;color:#fff;font-weight:700}
+.danger:disabled{background:var(--line);color:var(--muted);opacity:1}
+@media(max-width:1000px){header{grid-template-columns:1fr}.hright{justify-content:flex-start}}
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,6,8,.72)}
+.dialog{width:100%;max-width:480px;padding:20px;border:1px solid var(--ctl);border-radius:12px;background:var(--panel)}
+.dialog h2{font-size:21px;margin-bottom:8px}
+.dialog ul{margin:0 0 12px;padding-left:20px;font-size:14px;color:var(--text2)}
+.dialog p{margin:0 0 12px;font-size:14px;color:var(--text2)}
+.dialog .warn{margin-bottom:14px}
+.dialog .row2{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
 h1{margin:0;font-size:19px;font-weight:700}
 .path{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
 .game{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2)}
@@ -133,7 +144,7 @@ h3.sec{margin:18px 0 2px;font-size:15px;font-weight:700}
 <script>
 /*DATA*/
 const TOKEN = new URLSearchParams(location.search).get('t');
-const S = { text: '', base: '', stamp: '', path: '', running: false, cls: '2', tab: 'class', achCat: 'Zones', rewardTab: 'Perks', toast: '', err: '', conflict: false, fatal: '', backups: [], confirm: '', busy: false, loaded: false };
+const S = { modal: false, text: '', base: '', stamp: '', path: '', running: false, cls: '2', tab: 'class', achCat: 'Zones', rewardTab: 'Perks', toast: '', err: '', conflict: false, fatal: '', backups: [], confirm: '', busy: false, loaded: false };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ALLZ = ZONES.map((z) => z[0]);
 const DONE = (id) => DUAL_WIELD.includes(id);
@@ -215,6 +226,22 @@ function setExp(L, c, exp) {
   const line = L.find((l) => l.startsWith(`talent|${c}|`));
   if (line) { const p = line.split('|'); p[2] = String(exp); put(L, 'talent', ofClass(c), p.join('|')); }
   else if (exp > 0) put(L, 'talent', ofClass(c), `talent|${c}|${exp}|`);
+}
+
+function completeAll(L, m) {
+  const now = String(Math.floor(Date.now() / 1000));
+  Object.values(ACH).flat().forEach(([x]) => { if (!m.ach.includes(x)) { m.ach.push(x); m.achat[x] = now; } });
+  setAch(L, m);
+  CLASSES.forEach(([c]) => {
+    setExp(L, c, expFor(MAX_LEVEL));
+    setBeat(L, c, ALLZ.slice());
+    const h = m.heroic[c] || {};
+    ALLZ.forEach((z) => { h[z] = 5; });
+    setHeroic(L, c, h);
+    for (let si = 0; si < (DONE(c) ? 10 : 9); si++) COL_ORDER.forEach((r) => { const id = itemId(c, si, r); m.items.add(id); m.stars[id] = 5; });
+  });
+  put(L, 'items', any, `items|${[...m.items].sort((x, y) => Number(x) - Number(y)).join(',')}`);
+  put(L, 'stars', any, `stars|${Object.keys(m.stars).sort((x, y) => Number(x) - Number(y)).map((k) => `${k}:${m.stars[k]}`).join(',')}`);
 }
 
 function edit(fn) {
@@ -356,8 +383,9 @@ function render() {
   const views = { class: () => viewZones(m, name), life: () => viewLife(m), raw: viewRaw, backups: viewBackups, ach: () => viewAch(m), rewards: () => viewRewards(m) };
   const canSave = n > 0 && !S.running && !S.busy && !S.conflict;
   root.innerHTML = `<header><div class="title"><h1>Azeroth Survivors Save Editor</h1><div class="path mono">${esc(S.path)}</div></div>
-    <div class="game" role="status"><i class="dot${S.running ? ' on' : ''}"></i>${S.running ? 'Game running: close it to save' : 'Game closed'}</div>
-    <div class="actions"><button class="btn" data-a="discard" ${n ? '' : 'disabled'}>Discard changes</button><button class="btn primary" data-a="save" ${canSave ? '' : 'disabled'}>${n ? `Save ${n} change${n === 1 ? '' : 's'}` : 'Save'}</button></div></header>
+    <button class="btn danger" data-a="caopen" ${S.running || S.busy || S.conflict ? 'disabled' : ''}>Complete All</button>
+    <div class="hright"><div class="game" role="status"><i class="dot${S.running ? ' on' : ''}"></i>${S.running ? 'Game running: close it to save' : 'Game closed'}</div>
+    <div class="actions"><button class="btn" data-a="discard" ${n ? '' : 'disabled'}>Discard changes</button><button class="btn primary" data-a="save" ${canSave ? '' : 'disabled'}>${n ? `Save ${n} change${n === 1 ? '' : 's'}` : 'Save'}</button></div></div></header>
     ${S.conflict ? `<div class="banner err" role="alert">The game changed your save since it was opened. Reload to get the latest version; your unsaved edits here will be discarded.<button class="btn" data-a="reload">Reload save</button></div>` : ''}
     ${S.err ? `<div class="banner err" role="alert">${esc(S.err)}</div>` : ''}
     ${S.toast ? `<div class="banner ok" role="status">${esc(S.toast)}</div>` : ''}
@@ -367,7 +395,12 @@ function render() {
     </nav><main>
       ${views[S.tab]()}
       <section class="pending" aria-label="Pending changes"><h3>Pending changes</h3>${n ? changes.map((c) => `<div>${esc(c)}</div>`).join('') : '<div class="none">Nothing changed yet.</div>'}</section>
-    </main></div>`;
+    </main></div>${S.modal ? `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="catitle" aria-describedby="cawarn"><h2 id="catitle">Complete All?</h2>
+      <div class="warn" id="cawarn">This cannot be easily undone. It changes and saves your save right away.</div>
+      <p>For all 9 classes, this will:</p><ul><li>Complete every achievement</li><li>Set the class to level 200</li><li>Clear every zone at Heroic V</li><li>Grant every piece of gear at +5</li></ul>
+      <p>Your current save is backed up first, and you can restore it from Backups.${n ? ` Your ${n} unsaved change${n === 1 ? '' : 's'} will be saved too.` : ''}</p>
+      <div class="row2"><button class="btn" id="cacancel" data-a="cacancel">Cancel</button><button class="btn danger" data-a="caconfirm">Confirm</button></div></div></div>` : ''}`;
+  if (S.modal) { const c = document.getElementById('cacancel'); if (c) c.focus(); }
   const r2 = document.getElementById('raw');
   if (r2) r2.scrollTop = rawTop;
 }
@@ -381,11 +414,11 @@ async function load() {
   } catch (e) { S.fatal = e.message; }
   render();
 }
-async function save() {
+async function save(done) {
   S.busy = true; S.err = ''; render();
   try {
     const j = await api('/api/save', { text: S.text, stamp: S.stamp });
-    S.base = S.text; S.stamp = j.stamp; S.toast = `Saved. Your previous save was backed up as ${j.backup}.`;
+    S.base = S.text; S.stamp = j.stamp; S.toast = `${done || 'Saved.'} Your previous save was backed up as ${j.backup}.`;
     S.backups = (await api('/api/backups')) || [];
   } catch (e) {
     if (e.kind === 'changed') S.conflict = true;
@@ -442,6 +475,9 @@ document.addEventListener('click', (e) => {
   });
   else if (a === 'discard') { S.text = S.base; S.toast = ''; S.err = ''; render(); }
   else if (a === 'save') save();
+  else if (a === 'caopen') { S.modal = true; render(); }
+  else if (a === 'cacancel') { S.modal = false; render(); }
+  else if (a === 'caconfirm') { S.modal = false; edit(completeAll); save('Complete All finished.'); }
   else if (a === 'reload') load();
   else if (a === 'restore') {
     const b = S.backups[Number(i)], key = `${b.source}/${b.name}`;
@@ -461,6 +497,7 @@ document.addEventListener('change', (e) => {
   else if (c === 'race') edit((L, m) => { const k = Number(t.dataset.k), r = m.races.includes(k) ? m.races.filter((x) => x !== k) : m.races.concat(k); put(L, 'races', any, `races|${r.sort((x, y) => x - y).join(',')}`); });
   else if (c === 'raw') { S.text = t.value; S.toast = ''; render(); }
 });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.modal) { S.modal = false; render(); } });
 window.addEventListener('beforeunload', (e) => { if (S.text !== S.base) e.preventDefault(); });
 render();
 load();
