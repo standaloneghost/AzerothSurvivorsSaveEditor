@@ -8,6 +8,8 @@ d=src[b:e]
 for name in ('UNLOCKED','WORN_RARITY','STARS'):
     d=re.sub(r"const %s = .*?;\n"%name,'',d,count=1,flags=re.S)
 d=re.sub(r"const TREES = .*?const initialTalents = .*?\n\}\);\n",'',d,count=1,flags=re.S)
+for name in ('TABARDS','TABARD_BG'):
+    d=re.sub(r"const %s = .*?;\n"%name,'',d,count=1,flags=re.S)
 assert all(x in d for x in ('const ACH_NAMES','const PETS','const SETS','const COL_ORDER','const DUAL_WIELD','const STAT_LABELS','const RACES'))
 assert 'UNLOCKED' not in d and 'STARS' not in d and 'TDATA' not in d and 'initialTalents' not in d
 open('index.html','w').write(open('ui.template.html').read().replace('/*DATA*/',d))

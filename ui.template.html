@@ -132,6 +132,13 @@ h3.sec{margin:18px 0 2px;font-size:15px;font-weight:700}
 .pet em{font-style:normal;font-size:12px;font-weight:600;color:var(--gold-text)}
 .opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 12px;font-size:14px;cursor:pointer}
 .later{padding:16px;font-size:14px;color:var(--muted)}
+.dangerzone{margin-top:22px;padding:16px;border:2px solid #b5472f;border-radius:10px;background:#2a1714}
+.dangerzone h3{margin:0 0 4px;font-size:16px;font-weight:700;color:var(--err-text)}
+.dangerzone p{margin:0 0 12px;font-size:14px;color:var(--err-text)}
+.bigwarn{margin-bottom:14px;padding:14px 16px;border:2px solid #e8836f;border-radius:8px;background:var(--err-bg);color:#fff;font-size:18px;font-weight:700;line-height:1.3}
+.bigwarn span{display:block;margin-top:4px;font-size:14px;font-weight:500;color:var(--err-text)}
+.check{display:flex;align-items:center;gap:10px;min-height:48px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer}
+.check input{flex:none;accent-color:#b5472f}
 .pending{margin-top:22px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--side)}
 .pending h3{margin:0 0 6px;font-size:14px;font-weight:700}
 .pending div{font-size:13px;color:var(--gold-text);font-family:"IBM Plex Mono",Consolas,monospace}
@@ -144,7 +151,7 @@ h3.sec{margin:18px 0 2px;font-size:15px;font-weight:700}
 <script>
 /*DATA*/
 const TOKEN = new URLSearchParams(location.search).get('t');
-const S = { modal: false, text: '', base: '', stamp: '', path: '', running: false, cls: '2', tab: 'class', achCat: 'Zones', rewardTab: 'Perks', toast: '', err: '', conflict: false, fatal: '', backups: [], confirm: '', busy: false, loaded: false };
+const S = { modal: false, wipe: false, wipeOk: false, focus: false, text: '', base: '', stamp: '', path: '', running: false, cls: '2', tab: 'class', achCat: 'Zones', rewardTab: 'Perks', toast: '', err: '', conflict: false, fatal: '', backups: [], confirm: '', busy: false, loaded: false };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ALLZ = ZONES.map((z) => z[0]);
 const DONE = (id) => DUAL_WIELD.includes(id);
@@ -355,7 +362,8 @@ function viewBackups() {
     return `<div class="row"><div><div class="n mono">${esc(b.name)}</div><div class="s">${esc(b.source)} · ${esc(new Date(b.time * 1000).toLocaleString('en-US'))}</div></div>
       <button class="btn" data-a="restore" data-i="${i}" ${S.running ? 'disabled' : ''}>${ask ? 'Click again to restore' : 'Restore'}</button></div>`;
   }).join('') || '<div class="row"><div class="s">No backups yet.</div></div>';
-  return `<h2>Backups</h2><p class="sub">The editor backs up your save before every write and restore. The game's own hourly backups appear here too.</p><div class="box rows">${rows}</div>`;
+  return `<h2>Backups</h2><p class="sub">The editor backs up your save before every write and restore. The game's own hourly backups appear here too.</p><div class="box rows">${rows}</div>
+    <section class="dangerzone" aria-label="Delete saves"><h3>Delete all saves</h3><p>Permanently deletes your save and every backup listed above.</p><button class="btn danger" data-a="wipeopen" ${S.running ? 'disabled' : ''}>Delete all saves</button></section>`;
 }
 function viewAch(m) {
   const all = Object.values(ACH).flat(), cat = ACH[S.achCat];
@@ -392,7 +400,7 @@ function viewRewards(m) {
 
 function render() {
   const root = document.getElementById('app');
-  if (S.fatal) { root.innerHTML = `<div class="box fatal"><h2>Can't open your save</h2><p class="sub">${esc(S.fatal)}</p><button class="btn" data-a="reload">Try again</button></div>`; return; }
+  if (S.fatal) { root.innerHTML = `<div class="box fatal"><h2>${S.fatal.startsWith('Your saves were deleted') ? 'Saves deleted' : "Can't open your save"}</h2><p class="sub">${esc(S.fatal)}</p>${S.fatal.startsWith('Your saves were deleted') ? '' : '<button class="btn" data-a="reload">Try again</button>'}</div>`; return; }
   if (!S.loaded) { root.innerHTML = '<div class="box fatal">Opening your save…</div>'; return; }
   const raw = document.getElementById('raw');
   const rawTop = raw ? raw.scrollTop : 0;
@@ -419,8 +427,13 @@ function render() {
       <div class="warn" id="cawarn">This cannot be easily undone. It changes and saves your save right away.</div>
       <p>This will:</p><ul><li>Complete every achievement, which unlocks every companion</li><li>Grant every perk at max rank, except Wisp-herder and Rune-hound</li><li>Unlock every race and tabard</li><li>Set all 9 classes to level 200</li><li>Clear every zone at Heroic V on every class</li><li>Grant every piece of gear at +5 on every class</li></ul>
       <p>Your current save is backed up first, and you can restore it from Backups.${n ? ` Your ${n} unsaved change${n === 1 ? '' : 's'} will be saved too.` : ''}</p>
-      <div class="row2"><button class="btn" id="cacancel" data-a="cacancel">Cancel</button><button class="btn danger" data-a="caconfirm">Confirm</button></div></div></div>` : ''}`;
-  if (S.modal) { const c = document.getElementById('cacancel'); if (c) c.focus(); }
+      <div class="row2"><button class="btn" id="cacancel" data-a="cacancel">Cancel</button><button class="btn danger" data-a="caconfirm">Confirm</button></div></div></div>` : ''}${S.wipe ? `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="wipetitle" aria-describedby="wipewarn"><h2 id="wipetitle">Delete all saves?</h2>
+      <div class="bigwarn" id="wipewarn">THIS CANNOT BE UNDONE<span>Your save and every backup will be permanently deleted. All progress on every class will be gone, and the editor can't recover any of it.</span></div>
+      <p>This deletes ${S.backups.length + 1} save file${S.backups.length ? 's' : ''}: your current save and ${S.backups.length} backup${S.backups.length === 1 ? '' : 's'}.${n ? ' Your unsaved changes will be lost too.' : ''}</p>
+      <label class="check"><input type="checkbox" id="wipeok" data-c="wipeok" ${S.wipeOk ? 'checked' : ''}>I understand this permanently deletes everything</label>
+      <div class="row2"><button class="btn" id="wipecancel" data-a="wipecancel">Cancel</button><button class="btn danger" data-a="wipeconfirm" ${S.wipeOk ? '' : 'disabled'}>Delete everything</button></div></div></div>` : ''}`;
+  if (S.modal && S.focus) { const c = document.getElementById('cacancel'); if (c) c.focus(); S.focus = false; }
+  if (S.wipe && S.focus) { const c = document.getElementById('wipecancel'); if (c) c.focus(); S.focus = false; }
   const r2 = document.getElementById('raw');
   if (r2) r2.scrollTop = rawTop;
 }
@@ -454,6 +467,16 @@ async function restore(b) {
     await load();
     S.toast = `Restored ${b.name}. The save it replaced was backed up as ${j.backup}.`;
   } catch (e) { S.err = e.message; }
+  render();
+}
+async function wipe() {
+  if (!S.wipeOk) return;
+  S.wipe = false; S.wipeOk = false; S.err = '';
+  try {
+    const j = await api('/api/wipe', { confirm: 'DELETE ALL SAVES' });
+    S.text = S.base; S.loaded = false;
+    S.fatal = `Your saves were deleted (${j.removed} file${j.removed === 1 ? '' : 's'}). The game will start fresh the next time you launch it. You can close this window.`;
+  } catch (e) { S.err = e.message; if (e.kind === 'running') S.running = true; }
   render();
 }
 async function poll() {
@@ -495,7 +518,10 @@ document.addEventListener('click', (e) => {
   });
   else if (a === 'discard') { S.text = S.base; S.toast = ''; S.err = ''; render(); }
   else if (a === 'save') save();
-  else if (a === 'caopen') { S.modal = true; render(); }
+  else if (a === 'caopen') { S.modal = true; S.focus = true; render(); }
+  else if (a === 'wipeopen') { S.wipe = true; S.wipeOk = false; S.focus = true; render(); }
+  else if (a === 'wipecancel') { S.wipe = false; S.wipeOk = false; render(); }
+  else if (a === 'wipeconfirm') wipe();
   else if (a === 'cacancel') { S.modal = false; render(); }
   else if (a === 'caconfirm') { S.modal = false; edit(completeAll); save('Complete All finished.'); }
   else if (a === 'reload') load();
@@ -508,6 +534,7 @@ document.addEventListener('change', (e) => {
   const t = e.target, c = t.dataset.c;
   if (!c) return;
   const num = () => Math.max(0, parseInt(t.value, 10) || 0);
+  if (c === 'wipeok') { S.wipeOk = t.checked; render(); const box = document.getElementById('wipeok'); if (box) box.focus(); return; }
   if (c === 'marks') edit((L) => setMarks(L, S.cls, marksIn(t.value)));
   else if (c === 'level') edit((L, m) => { const lv = Math.min(MAX_LEVEL, num()); if (lv !== levelOf(m.talent[S.cls])) setExp(L, S.cls, expFor(lv)); });
   else if (c === 'beat') edit((L, m) => { const b = m.beat[S.cls] || [], z = t.dataset.z; setBeat(L, S.cls, b.includes(z) ? b.filter((x) => x !== z) : b.concat(z)); });
@@ -518,7 +545,7 @@ document.addEventListener('change', (e) => {
   else if (c === 'race') edit((L, m) => { const k = Number(t.dataset.k), r = m.races.includes(k) ? m.races.filter((x) => x !== k) : m.races.concat(k); put(L, 'races', any, `races|${r.sort((x, y) => x - y).join(',')}`); });
   else if (c === 'raw') { S.text = t.value; S.toast = ''; render(); }
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.modal) { S.modal = false; render(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (S.modal || S.wipe)) { S.modal = false; S.wipe = false; S.wipeOk = false; render(); } });
 window.addEventListener('beforeunload', (e) => { if (S.text !== S.base) e.preventDefault(); });
 render();
 load();

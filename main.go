@@ -222,6 +222,27 @@ func listBackups(p string) []backup {
 	return out
 }
 
+// wipeSaves removes the live save and every backup the editor lists. Settings
+// such as hud.txt and meter.txt are left alone.
+func wipeSaves(p string) (int, []string) {
+	targets := []string{}
+	for _, b := range listBackups(p) {
+		targets = append(targets, b.path)
+	}
+	targets = append(targets, filepath.Join(filepath.Dir(p), "characters.backup-at.txt"), p)
+	removed, failed := 0, []string{}
+	for _, t := range targets {
+		err := os.Remove(t)
+		if err == nil {
+			removed++
+		} else if !errors.Is(err, os.ErrNotExist) {
+			failed = append(failed, filepath.Base(t))
+		}
+	}
+	os.Remove(filepath.Join(filepath.Dir(p), "EditorBackups"))
+	return removed, failed
+}
+
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -353,6 +374,24 @@ func main() {
 			}
 		}
 		fail(w, 404, "missing", "That backup is no longer there.")
+	}))
+
+	mux.HandleFunc("/api/wipe", api(func(w http.ResponseWriter, r *http.Request) {
+		var q struct{ Confirm string }
+		if r.Method != http.MethodPost || json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&q) != nil || q.Confirm != "DELETE ALL SAVES" {
+			fail(w, 400, "bad", "Bad request.")
+			return
+		}
+		if gameRunning() {
+			fail(w, 409, "running", "Close the game before deleting your saves.")
+			return
+		}
+		removed, failed := wipeSaves(p)
+		if len(failed) > 0 {
+			fail(w, 500, "write", fmt.Sprintf("%d files were deleted, but these could not be: %s.", removed, strings.Join(failed, ", ")))
+			return
+		}
+		writeJSON(w, 200, map[string]any{"removed": removed})
 	}))
 
 	srv := &http.Server{
