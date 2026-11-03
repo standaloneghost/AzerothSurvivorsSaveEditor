@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const items = (t) => t.split('\n').find((l) => l.startsWith('items|')).slice(6).split(',');
 (async () => {
@@ -16,7 +16,7 @@ const items = (t) => t.split('\n').find((l) => l.startsWith('items|')).slice(6).
   ok(await p.locator('.cell.na').count() === 0, 'no N/A cells');
   ok(await p.locator('.armor tbody tr').count() === 10, 'rogue has 10 rows');
   ok((await p.textContent('.armor')).includes('Off Hand') && !(await p.textContent('.armor')).includes("can't be edited"), 'off hand row, note gone');
-  await p.screenshot({ path: '../shots/offhand.png', clip: { x: 900, y: 240, width: 380, height: 640 } });
+  await p.screenshot({ path: 'tests/shots/offhand.png', clip: { x: 900, y: 240, width: 380, height: 640 } });
   await go('7'); ok((await count()).includes('6 of 60'), 'shaman: ' + await count());
   await go('2'); ok(await p.locator('.armor tbody tr').count() === 9 && (await count()).includes('of 54'), 'paladin still 9 rows, 54');
   await go('7');

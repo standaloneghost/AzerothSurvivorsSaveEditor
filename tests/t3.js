@@ -1,14 +1,14 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url); await p.waitForSelector('h2');
   const before = dec(save);
   const items = (t) => t.split('\n').find((l) => l.startsWith('items|')).slice(6).split(',');
-  await p.screenshot({ path: '../shots/layout.png', clip: { x: 230, y: 70, width: 1050, height: 420 } });
+  await p.screenshot({ path: 'tests/shots/layout.png', clip: { x: 230, y: 70, width: 1050, height: 420 } });
   await p.click('button[data-a=cls][data-v="4"]');
   await p.click('button[data-a=unlockall]');
   console.log('rogue count:', await p.textContent('.armor .count'), '| disabled now:', await p.locator('button[data-a=unlockall]').isDisabled());

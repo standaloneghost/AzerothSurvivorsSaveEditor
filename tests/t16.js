@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
 (async () => {
@@ -12,7 +12,7 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
   await p.click('button[data-a=caopen]');
   const d = await p.textContent('.dialog');
   ok(d.includes('except Wisp-herder and Rune-hound') && d.includes('every race'), 'dialog lists the additions');
-  await p.screenshot({ path: '../shots/ca2.png' });
+  await p.screenshot({ path: 'tests/shots/ca2.png' });
   await p.click('button[data-a=caconfirm]'); await p.waitForSelector('.banner.ok');
   const t = dec(save);
   console.log(ln(t, 'perk')); console.log(ln(t, 'races')); console.log(ln(t, 'pets'));

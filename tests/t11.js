@@ -8,7 +8,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await p.locator('.tabs, [role=tablist]').count() === 0, 'tab bar removed');
   const names = await p.$$eval('nav .navl', (n) => [...n[0].querySelectorAll('b')].map((x) => x.textContent));
   ok(names.join() === 'Achievements,Rewards,Lifetime stats,Advanced,Backups', 'player section: ' + names.join(', '));
-  await p.screenshot({ path: '../shots/nav.png' });
+  await p.screenshot({ path: 'tests/shots/nav.png' });
   const page = async (v, text) => { await p.click(`button[data-a=page][data-v=${v}]`); ok((await p.textContent('h2')) === text, v + ' opens ' + text); ok(await p.locator('.navb.sel').count() === 1, v + ' highlights one item'); ok(await p.locator('.armor').count() === 0, v + ' hides class view'); };
   await page('life', 'Lifetime stats'); await page('raw', 'Advanced'); await page('backups', 'Backups'); await page('ach', 'Achievements'); await page('rewards', 'Rewards');
   for (const [c, n] of [['8', 'Mage'], ['4', 'Rogue']]) {

@@ -12,7 +12,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await set('instinct_wisps', 1); ok(await w() === 0, 'wisp only: no warning');
   await set('instinct_runes', 1); ok(await w() === 1, 'both: warning');
   ok((await p.textContent('.warn')).includes('prevent in-game purchases'), 'warning text');
-  await p.screenshot({ path: '../shots/warn.png', clip: { x: 230, y: 70, width: 1050, height: 360 } });
+  await p.screenshot({ path: 'tests/shots/warn.png', clip: { x: 230, y: 70, width: 1050, height: 360 } });
   await set('instinct_wisps', 0); ok(await w() === 0, 'rune only: no warning');
   await set('instinct_wisps', 1); await p.click('button[data-a=rtab][data-v=Perks]'); ok(await w() === 0, 'warning only on Companions');
   ok(errs.length === 0, 'no page errors');

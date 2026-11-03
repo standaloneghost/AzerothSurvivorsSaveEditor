@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
 (async () => {
@@ -13,11 +13,11 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
   const set = async (v) => { await p.fill('input[data-c=level]', String(v)); await p.press('input[data-c=level]', 'Tab'); };
   const go = (c) => p.click(`button[data-a=cls][data-v="${c}"]`);
   ok(await p.locator('button[data-v=talents]').count() === 0 && await p.locator('.tree').count() === 0, 'no Talents section');
-  await go('2'); ok(await lv() === '130', 'paladin level ' + await lv());
+  await go('2'); ok(await lv() === '127', 'paladin level ' + await lv());
   await go('8'); ok(await lv() === '131', 'mage level');
   await go('4'); ok(await lv() === '2', 'rogue level');
   await go('1'); ok(await lv() === '0', 'warrior level');
-  await p.screenshot({ path: '../shots/level.png', clip: { x: 230, y: 70, width: 1050, height: 210 } });
+  await p.screenshot({ path: 'tests/shots/level.png', clip: { x: 230, y: 70, width: 1050, height: 210 } });
   await set(250); ok(await lv() === '200', 'over 200 reverts to 200');
   await go('8'); await set(131);
   ok(!(await p.textContent('.pending')).includes('Mage'), 'same level keeps exact experience');

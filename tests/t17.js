@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs'), { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
 (async () => {
@@ -14,7 +14,7 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
   ok(await p.locator('input[data-c=tabard]').count() === 15, '15 editable tabards');
   ok(await p.locator('input[data-c=tabard]:checked').count() === 13, 'current 13 ticked');
   ok((await p.textContent('main')).includes('Unlocked by Warsong Gulch'), 'battleground tabards show their achievement');
-  await p.screenshot({ path: '../shots/tabards.png', fullPage: true });
+  await p.screenshot({ path: 'tests/shots/tabards.png', fullPage: true });
   await p.check('input[data-c=tabard][data-k="90016"]');
   ok((await p.textContent('.pending')).includes('Tabard added: Scarlet Crusade Tabard'), 'pending shows tabard');
   await p.uncheck('input[data-c=tabard][data-k="90016"]');

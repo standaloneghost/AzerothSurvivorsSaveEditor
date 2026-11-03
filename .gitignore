@@ -1,4 +1,7 @@
 key.bin
-editor-linux
 *.exe
+editor-linux
 index.html
+url.txt
+tests/shots/
+__pycache__/

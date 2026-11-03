@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
 (async () => {
@@ -13,7 +13,7 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
   await go('1'); await p.click('button[data-a=maxlevel]');
   ok(await p.inputValue('input[data-c=level]') === '200', 'warrior shows level 200');
   await go('8'); await p.click('button[data-a=maxlevel]');
-  await p.screenshot({ path: '../shots/max.png', clip: { x: 230, y: 70, width: 1050, height: 210 } });
+  await p.screenshot({ path: 'tests/shots/max.png', clip: { x: 230, y: 70, width: 1050, height: 210 } });
   await p.click('button[data-a=save]'); await p.waitForSelector('.banner.ok');
   const t = dec(save);
   ok(ln(t, 'talent|1|') === 'talent|1|314500|', 'class with no line gets 314500');

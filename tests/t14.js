@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs'), { execFileSync } = require('child_process');
 const [url, save, flag] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
 (async () => {
@@ -15,7 +15,7 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k)) || '';
   ok(await p.locator('[role=alertdialog]').count() === 1, 'dialog opens');
   ok((await p.textContent('.dialog')).includes('cannot be easily undone'), 'warning shown');
   ok(await p.evaluate(() => document.activeElement.id) === 'cacancel', 'Cancel has focus');
-  await p.screenshot({ path: '../shots/ca.png' });
+  await p.screenshot({ path: 'tests/shots/ca.png' });
   await p.click('button[data-a=cacancel]');
   ok(await p.locator('[role=alertdialog]').count() === 0 && dec(save) === orig, 'Cancel changes nothing');
   await p.click('button[data-a=caopen]'); await p.keyboard.press('Escape');

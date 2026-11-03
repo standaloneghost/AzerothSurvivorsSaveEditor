@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const [url, save] = process.argv.slice(2);
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
 (async () => {
@@ -11,7 +11,7 @@ const ln = (t, k) => t.split('\n').find((l) => l.startsWith(k + '|')) || '';
   const orig = dec(save), t0 = Math.floor(Date.now() / 1000);
   await p.click('button[data-a=page][data-v=ach]');
   console.log((await p.textContent('.sub')).trim());
-  await p.screenshot({ path: '../shots/achall.png', clip: { x: 230, y: 70, width: 1050, height: 240 } });
+  await p.screenshot({ path: 'tests/shots/achall.png', clip: { x: 230, y: 70, width: 1050, height: 240 } });
   await p.click('button[data-a=achall]');
   ok((await p.textContent('.sub')).includes('125 of 125'), 'all 125 earned');
   ok(await p.locator('button[data-a=achall]').isDisabled(), 'button disables when complete');

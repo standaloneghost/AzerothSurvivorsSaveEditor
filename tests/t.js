@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const fs = require('fs'), { execFileSync } = require('child_process');
 const [url, dir, shots] = process.argv.slice(2);
 const save = dir + '/characters.txt', flag = dir + '/game.flag';
-const dec = (f) => execFileSync('python3', ['-I', '../dec/show.py', f], { encoding: 'utf8' });
+const dec = (f) => execFileSync('python3', ['-I', 'tools/show_save.py', f], { encoding: 'utf8' });
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {

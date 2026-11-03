@@ -15,7 +15,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok((await p.textContent('.bigwarn')).includes('THIS CANNOT BE UNDONE'), 'big warning shown');
   ok(await p.evaluate(() => document.activeElement.id) === 'wipecancel', 'Cancel has focus');
   ok(await p.locator('button[data-a=wipeconfirm]').isDisabled(), 'Delete disabled until checked');
-  await p.screenshot({ path: '../shots/wipe.png' });
+  await p.screenshot({ path: 'tests/shots/wipe.png' });
   await p.check('#wipeok');
   ok(await p.locator('button[data-a=wipeconfirm]').isEnabled(), 'checkbox enables Delete');
   await p.uncheck('#wipeok');
