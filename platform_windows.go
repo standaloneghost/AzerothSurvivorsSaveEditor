@@ -4,26 +4,37 @@ package main
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 	"syscall"
 	"unsafe"
 )
 
-const createNoWindow = 0x08000000
+const gameExe = "AzerothSurvivors.exe"
 
-func hidden(c *exec.Cmd) *exec.Cmd {
-	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
-	return c
-}
-
+// gameRunning lists processes through the Windows API instead of launching tasklist.
 func gameRunning() bool {
-	out, err := hidden(exec.Command("tasklist", "/FI", "IMAGENAME eq AzerothSurvivors.exe", "/NH", "/FO", "CSV")).Output()
-	return err == nil && strings.Contains(strings.ToLower(string(out)), "azerothsurvivors.exe")
+	snap, err := syscall.CreateToolhelp32Snapshot(syscall.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return false
+	}
+	defer syscall.CloseHandle(snap)
+	var entry syscall.ProcessEntry32
+	entry.Size = uint32(unsafe.Sizeof(entry))
+	for err = syscall.Process32First(snap, &entry); err == nil; err = syscall.Process32Next(snap, &entry) {
+		if strings.EqualFold(syscall.UTF16ToString(entry.ExeFile[:]), gameExe) {
+			return true
+		}
+	}
+	return false
 }
 
+// openBrowser asks Windows to open the default browser instead of launching rundll32.
 func openBrowser(url string) {
-	hidden(exec.Command("rundll32", "url.dll,FileProtocolHandler", url)).Start()
+	verb, _ := syscall.UTF16PtrFromString("open")
+	target, _ := syscall.UTF16PtrFromString(url)
+	const swShowNormal = 1
+	syscall.NewLazyDLL("shell32.dll").NewProc("ShellExecuteW").Call(0,
+		uintptr(unsafe.Pointer(verb)), uintptr(unsafe.Pointer(target)), 0, 0, swShowNormal)
 }
 
 func fatal(msg string) {

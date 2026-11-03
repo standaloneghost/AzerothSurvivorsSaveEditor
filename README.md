@@ -25,7 +25,7 @@ Requires Go and Python 3. You also need your own copy of `AzerothSurvivors.exe`,
 ```bash
 python3 tools/extract_key.py path/to/AzerothSurvivors.exe
 python3 tools/build_page.py
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o AzerothSurvivorsSaveEditor.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-H windowsgui" -o AzerothSurvivorsSaveEditor.exe .
 ```
 
 Never commit `key.bin` or a built `.exe`. Both contain the key, and `.gitignore` excludes them.
