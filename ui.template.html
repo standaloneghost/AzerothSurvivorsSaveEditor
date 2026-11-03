@@ -160,9 +160,12 @@ async function api(path, body) {
   return j;
 }
 
+const TABARD_BG = [['90001', 'Warsong Battle Tabard', 'zone:wsg'], ['90002', 'Silverwing Battle Tabard', 'zone:wsg'], ['90003', 'Arathor Battle Tabard', 'zone:ab'], ['90004', 'Defilers Battle Tabard', 'zone:ab'], ['90005', 'Stormpike Battle Tabard', 'zone:av'], ['90006', 'Frostwolf Battle Tabard', 'zone:av']];
+const TABARDS = [['90011', 'Stormwind Tabard'], ['90012', 'Tabard of Lordaeron'], ['90013', 'Tabard of Stromgarde'], ['90014', 'Tabard of Theramore'], ['90015', 'Tabard of Dalaran'], ['90016', 'Scarlet Crusade Tabard'], ['90017', 'Darkmoon Faire Tabard'], ['90018', 'Tabard of the Alliance'], ['90019', 'Tabard of the Horde'], ['90020', 'Tabard of the Argent Dawn'], ['90021', 'Tabard of Flame'], ['90022', 'Tabard of Frost'], ['90023', "Alliance Officer's Tabard"], ['90024', "Horde Officer's Tabard"], ['90025', "Contest Winner's Tabard"]];
+
 /* ---------- reading the save ---------- */
 function parse(text) {
-  const m = { stat: [], marks: {}, beat: {}, heroic: {}, ach: [], achat: {}, perks: {}, pets: [], races: [], items: new Set(), stars: {}, worn: new Set(), talent: {} };
+  const m = { stat: [], marks: {}, beat: {}, heroic: {}, ach: [], achat: {}, perks: {}, pets: [], races: [], items: new Set(), stars: {}, worn: new Set(), talent: {}, tabard: [] };
   for (const line of text.split('\n')) {
     const p = line.split('|'), k = p[0];
     if (k === 'stat') m.stat = (p[1] || '').split(',').filter(Boolean).map((x) => x.split('='));
@@ -178,6 +181,7 @@ function parse(text) {
     else if (k === 'stars') (p[1] || '').split(',').filter(Boolean).forEach((x) => { const [a, b] = x.split(':'); m.stars[a] = Number(b) || 0; });
     else if (k === 'equip') (p[2] || '').split(',').filter(Boolean).forEach((x) => m.worn.add(x.split(':')[1]));
     else if (k === 'talent') m.talent[p[1]] = p[2] || '0';
+    else if (k === 'tabard') m.tabard = (p[1] || '').split(',').filter(Boolean);
   }
   return m;
 }
@@ -210,6 +214,13 @@ function toggleAch(L, m, id, on) {
   if (on && !m.ach.includes(id)) { m.ach.push(id); m.achat[id] = String(Math.floor(Date.now() / 1000)); }
   if (!on) { m.ach = m.ach.filter((a) => a !== id); delete m.achat[id]; }
   setAch(L, m);
+}
+function setTabards(L, list) {
+  const val = `tabard|${list.slice().sort((a, b) => Number(a) - Number(b)).join(',')}`;
+  const i = L.findIndex((l) => l.startsWith('tabard|'));
+  if (i >= 0) { L[i] = val; return; }
+  const after = L.findIndex((l) => l.startsWith('perk|'));
+  L.splice(after >= 0 ? after + 1 : L.length, 0, val);
 }
 function setPerks(L, p) { put(L, 'perk', any, `perk|${Object.keys(p).filter((k) => p[k] > 0).sort().map((k) => `${k}:${p[k]}`).join(',')}`); }
 function itemId(c, si, r) { return `1${c.padStart(2, '0')}${si}${r}0`; }
@@ -246,6 +257,7 @@ function completeAll(L, m) {
   PERKS.concat(COMPANION_PERKS).forEach(([k, , max]) => { if (k !== 'instinct_wisps' && k !== 'instinct_runes') m.perks[k] = max; });
   setPerks(L, m.perks);
   put(L, 'races', any, `races|${RACES.map((r) => r[0]).join(',')}`);
+  setTabards(L, [...new Set(m.tabard.concat(TABARDS.map((t) => t[0])))]);
 }
 
 function edit(fn) {
@@ -275,6 +287,7 @@ function diff(a, b) {
   PERKS.concat(COMPANION_PERKS).forEach(([k, n]) => { if ((x.perks[k] || 0) !== (y.perks[k] || 0)) out.push(`${n}: rank ${x.perks[k] || 0} → ${y.perks[k] || 0}`); });
   const petName = (k) => (PETS.find((p) => p[0] === k) || [k, k || 'none'])[1];
   [0, 1].forEach((i) => { if (x.pets[i] !== y.pets[i]) out.push(`Companion slot ${i + 1}: ${petName(x.pets[i])} → ${petName(y.pets[i])}`); });
+  TABARDS.forEach(([k, n]) => { if (x.tabard.includes(k) !== y.tabard.includes(k)) out.push(`Tabard ${y.tabard.includes(k) ? 'added' : 'removed'}: ${n}`); });
   RACES.forEach(([k, n]) => { if (x.races.includes(k) !== y.races.includes(k)) out.push(`Race ${y.races.includes(k) ? 'added' : 'removed'}: ${n}`); });
   y.items.forEach((id) => {
     if (x.items.has(id)) return;
@@ -283,7 +296,7 @@ function diff(a, b) {
   });
   const stat0 = Object.fromEntries(x.stat), stat1 = Object.fromEntries(y.stat);
   STAT_LABELS.forEach(([k, l]) => { if (stat0[k] !== stat1[k]) out.push(k === 'marks' ? `${l}: ${marksText(stat0[k])} → ${marksText(stat1[k])}` : `${l}: ${stat0[k]} → ${stat1[k]}`); });
-  const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat', 'talent']);
+  const known = new Set(['marks', 'beat', 'hbeat', 'ach', 'achat', 'perk', 'pets', 'races', 'items', 'stat', 'talent', 'tabard']);
   const rest = (t) => t.split('\n').filter((l) => !known.has(l.split('|')[0]));
   const r0 = rest(a), r1 = rest(b), seen = new Map();
   r0.forEach((l) => seen.set(l, (seen.get(l) || 0) + 1));
@@ -370,6 +383,9 @@ function viewRewards(m) {
   if (t === 'Perks') inner = viewPerks(m, PERKS);
   else if (t === 'Companions') inner = ((m.perks.instinct_wisps || 0) > 0 && (m.perks.instinct_runes || 0) > 0 ? '<div class="warn" role="alert" style="margin-bottom:12px">Warning: having both Wisp-herder and Rune-hound will prevent in-game purchases.</div>' : '') + viewPerks(m, COMPANION_PERKS) + viewPets(m);
   else if (t === 'Races') inner = `<div class="grid">${RACES.map(([k, n]) => `<label class="box opt"><input type="checkbox" data-c="race" data-k="${k}" ${m.races.includes(k) ? 'checked' : ''}>${esc(n)}</label>`).join('')}</div>`;
+  else if (t === 'Tabards') inner = `<div class="grid">${TABARDS.map(([k, n]) => `<label class="box opt"><input type="checkbox" data-c="tabard" data-k="${k}" ${m.tabard.includes(k) ? 'checked' : ''}>${esc(n)}</label>`).join('')}</div>
+    <h3 class="sec">Battleground tabards</h3><p class="sub">These come with their zone's achievement.</p>
+    <div class="grid pets">${TABARD_BG.map(([, n, a]) => `<div class="box pet"><b>${esc(n)}</b><small>${m.ach.includes(a) ? 'Unlocked by' : 'Needs'} ${esc(ACH_NAMES[a] || a)}</small></div>`).join('')}</div>`;
   else inner = `<div class="box later">${esc(t)} can't be edited yet.</div>`;
   return `<h2>Rewards</h2><p class="sub">Shared by every class.</p><div class="pills" role="group" aria-label="Reward types">${['Perks', 'Companions', 'Races', 'Tabards', 'Appearances'].map((r) => `<button class="pill${t === r ? ' sel' : ''}" aria-pressed="${t === r}" data-a="rtab" data-v="${r}">${r}</button>`).join('')}</div>${inner}`;
 }
@@ -401,7 +417,7 @@ function render() {
       <section class="pending" aria-label="Pending changes"><h3>Pending changes</h3>${n ? changes.map((c) => `<div>${esc(c)}</div>`).join('') : '<div class="none">Nothing changed yet.</div>'}</section>
     </main></div>${S.modal ? `<div class="overlay"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="catitle" aria-describedby="cawarn"><h2 id="catitle">Complete All?</h2>
       <div class="warn" id="cawarn">This cannot be easily undone. It changes and saves your save right away.</div>
-      <p>This will:</p><ul><li>Complete every achievement, which unlocks every companion</li><li>Grant every perk at max rank, except Wisp-herder and Rune-hound</li><li>Unlock every race</li><li>Set all 9 classes to level 200</li><li>Clear every zone at Heroic V on every class</li><li>Grant every piece of gear at +5 on every class</li></ul>
+      <p>This will:</p><ul><li>Complete every achievement, which unlocks every companion</li><li>Grant every perk at max rank, except Wisp-herder and Rune-hound</li><li>Unlock every race and tabard</li><li>Set all 9 classes to level 200</li><li>Clear every zone at Heroic V on every class</li><li>Grant every piece of gear at +5 on every class</li></ul>
       <p>Your current save is backed up first, and you can restore it from Backups.${n ? ` Your ${n} unsaved change${n === 1 ? '' : 's'} will be saved too.` : ''}</p>
       <div class="row2"><button class="btn" id="cacancel" data-a="cacancel">Cancel</button><button class="btn danger" data-a="caconfirm">Confirm</button></div></div></div>` : ''}`;
   if (S.modal) { const c = document.getElementById('cacancel'); if (c) c.focus(); }
@@ -498,6 +514,7 @@ document.addEventListener('change', (e) => {
   else if (c === 'stat') edit((L, m) => { const val = String(t.dataset.k === 'marks' ? marksIn(t.value) : num()); const row = m.stat.find((r) => r[0] === t.dataset.k); if (row) row[1] = val; else m.stat.push([t.dataset.k, val]); put(L, 'stat', any, `stat|${m.stat.map((r) => r.join('=')).join(',')}`); });
   else if (c === 'ach') edit((L, m) => toggleAch(L, m, t.dataset.id, t.checked));
   else if (c === 'pet') edit((L, m) => { const p = [m.pets[0] || 'squirrel', m.pets[1] || 'squirrel']; p[Number(t.dataset.i)] = t.value; put(L, 'pets', any, `pets|${p.join(',')}`); });
+  else if (c === 'tabard') edit((L, m) => { const k = t.dataset.k; setTabards(L, m.tabard.includes(k) ? m.tabard.filter((x) => x !== k) : m.tabard.concat(k)); });
   else if (c === 'race') edit((L, m) => { const k = Number(t.dataset.k), r = m.races.includes(k) ? m.races.filter((x) => x !== k) : m.races.concat(k); put(L, 'races', any, `races|${r.sort((x, y) => x - y).join(',')}`); });
   else if (c === 'raw') { S.text = t.value; S.toast = ''; render(); }
 });
