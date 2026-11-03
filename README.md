@@ -63,5 +63,5 @@ Level N costs `80 + 15 * (N - 1)` experience. The game's code stops awarding tal
 ## Known limits
 
 - The save key and format can change with a game update. The editor then refuses to open the save rather than risk damaging it, and `tools/extract_key.py` will need new addresses.
-- Editing talent trees directly was tried on `test-talent-points`, and the game wiped the edits. That branch is kept for reference only.
+- Editing talent trees directly was tried, and the game wiped the edits, so the editor doesn't include it.
 - Gear IDs for classes with no gear in the test save follow the Paladin and Mage pattern, and weren't individually confirmed.
