@@ -364,7 +364,7 @@ function viewRewards(m) {
   const t = S.rewardTab;
   let inner;
   if (t === 'Perks') inner = viewPerks(m, PERKS);
-  else if (t === 'Companions') inner = viewPerks(m, COMPANION_PERKS) + viewPets(m);
+  else if (t === 'Companions') inner = ((m.perks.instinct_wisps || 0) > 0 && (m.perks.instinct_runes || 0) > 0 ? '<div class="warn" role="alert" style="margin-bottom:12px">Warning: having both Wisp-herder and Rune-hound will prevent in-game purchases.</div>' : '') + viewPerks(m, COMPANION_PERKS) + viewPets(m);
   else if (t === 'Races') inner = `<div class="grid">${RACES.map(([k, n]) => `<label class="box opt"><input type="checkbox" data-c="race" data-k="${k}" ${m.races.includes(k) ? 'checked' : ''}>${esc(n)}</label>`).join('')}</div>`;
   else inner = `<div class="box later">${esc(t)} can't be edited yet.</div>`;
   return `<h2>Rewards</h2><p class="sub">Shared by every class.</p><div class="pills" role="group" aria-label="Reward types">${['Perks', 'Companions', 'Races', 'Tabards', 'Appearances'].map((r) => `<button class="pill${t === r ? ' sel' : ''}" aria-pressed="${t === r}" data-a="rtab" data-v="${r}">${r}</button>`).join('')}</div>${inner}`;

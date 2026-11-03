@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(process.argv[2]); await p.waitForSelector('h2');
+  await p.click('button[data-a=page][data-v=rewards]');
+  await p.click('button[data-a=rtab][data-v=Companions]');
+  const w = () => p.locator('.warn').count();
+  const set = (k, v) => p.click(`button[data-a=perk][data-k=${k}][data-v="${v}"]`);
+  await set('instinct_wisps', 0); await set('instinct_runes', 0); ok(await w() === 0, 'neither: no warning');
+  await set('instinct_wisps', 1); ok(await w() === 0, 'wisp only: no warning');
+  await set('instinct_runes', 1); ok(await w() === 1, 'both: warning');
+  ok((await p.textContent('.warn')).includes('prevent in-game purchases'), 'warning text');
+  await p.screenshot({ path: '../shots/warn.png', clip: { x: 230, y: 70, width: 1050, height: 360 } });
+  await set('instinct_wisps', 0); ok(await w() === 0, 'rune only: no warning');
+  await set('instinct_wisps', 1); await p.click('button[data-a=rtab][data-v=Perks]'); ok(await w() === 0, 'warning only on Companions');
+  ok(errs.length === 0, 'no page errors');
+  console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
+  await b.close();
+})().catch((e) => { console.error(e); process.exit(1); });
