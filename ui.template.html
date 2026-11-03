@@ -315,7 +315,8 @@ function viewBackups() {
 }
 function viewAch(m) {
   const all = Object.values(ACH).flat(), cat = ACH[S.achCat];
-  return `<h2>Achievements</h2><p class="sub">${all.filter((a) => m.ach.includes(a[0])).length} of ${all.length} earned. New ones are dated when you tick them.</p>
+  const earned = all.filter((a) => m.ach.includes(a[0])).length;
+  return `<div class="head" style="margin-bottom:14px"><div><h2>Achievements</h2><p class="sub">${earned} of ${all.length} earned. New ones are dated when you tick them.</p></div><button class="btn" data-a="achall" ${earned < all.length ? '' : 'disabled'}>Grant all achievements</button></div>
     <div class="pills" role="group" aria-label="Achievement categories">${Object.keys(ACH).map((c) => `<button class="pill${S.achCat === c ? ' sel' : ''}" aria-pressed="${S.achCat === c}" data-a="achcat" data-v="${esc(c)}">${esc(c)} ${ACH[c].filter((a) => m.ach.includes(a[0])).length}/${ACH[c].length}</button>`).join('')}</div>
     <div class="achs">${cat.map(([id, nm, desc]) => `<label class="box ach"><input type="checkbox" data-c="ach" data-id="${esc(id)}" ${m.ach.includes(id) ? 'checked' : ''}><span><b>${esc(nm)}</b><span>${esc(desc)}</span></span></label>`).join('')}</div>`;
 }
@@ -434,6 +435,11 @@ document.addEventListener('click', (e) => {
   else if (a === 'unlockall') edit((L, m) => { lockedPieces(m, S.cls).forEach((x) => m.items.add(x)); put(L, 'items', any, `items|${[...m.items].sort((x, y) => Number(x) - Number(y)).join(',')}`); });
   else if (a === 'perk') edit((L, m) => { m.perks[k] = Number(v); setPerks(L, m.perks); });
   else if (a === 'earn') edit((L, m) => toggleAch(L, m, id, true));
+  else if (a === 'achall') edit((L, m) => {
+    const now = String(Math.floor(Date.now() / 1000));
+    Object.values(ACH).flat().forEach(([x]) => { if (!m.ach.includes(x)) { m.ach.push(x); m.achat[x] = now; } });
+    setAch(L, m);
+  });
   else if (a === 'discard') { S.text = S.base; S.toast = ''; S.err = ''; render(); }
   else if (a === 'save') save();
   else if (a === 'reload') load();
